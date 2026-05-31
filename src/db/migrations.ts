@@ -7,6 +7,7 @@ function getMigrationsDir(): string {
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const candidates = [
     join(currentDir, 'migrations'),
+    join(currentDir, 'db', 'migrations'),
     join(currentDir, '..', 'db', 'migrations'),
     join(currentDir, '..', '..', 'src', 'db', 'migrations'),
   ];
