@@ -81,7 +81,7 @@ export class TokenService {
   }
 
   async createSigningKey(): Promise<void> {
-    const { publicKey, privateKey } = await generateKeyPair('RS256');
+    const { publicKey, privateKey } = await generateKeyPair('RS256', { extractable: true });
     const publicJwk = await exportJWK(publicKey);
     const privateJwk = await exportJWK(privateKey);
     const kid = generateOpaqueToken(16);

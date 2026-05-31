@@ -1,11 +1,5 @@
 CREATE SCHEMA IF NOT EXISTS auth;
 
-CREATE TABLE IF NOT EXISTS auth.schema_migrations (
-  id bigserial PRIMARY KEY,
-  name text NOT NULL UNIQUE,
-  applied_at timestamptz NOT NULL DEFAULT now()
-);
-
 CREATE TABLE IF NOT EXISTS auth.users (
   id bigserial PRIMARY KEY,
   primary_email text UNIQUE,

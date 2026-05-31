@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: auth
+      POSTGRES_PASSWORD: auth
+      POSTGRES_DB: auth
+    ports:
+      - '5433:5432'
+    volumes:
+      - auth_pg_data:/data
+
+volumes:
+  auth_pg_data:

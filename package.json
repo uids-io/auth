@@ -23,8 +23,11 @@
     "build": "tsup && node scripts/copy-migrations.mjs",
     "dev": "tsup --watch",
     "test": "vitest run",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "engines": {
     "node": ">=20"
@@ -51,6 +54,7 @@
     "@types/supertest": "^6.0.2",
     "express": "^4.21.2",
     "pg": "^8.13.3",
+    "pg-mem": "^3.0.5",
     "supertest": "^7.0.0",
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",

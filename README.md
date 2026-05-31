@@ -161,6 +161,19 @@ See [docs/sdk-contract.md](docs/sdk-contract.md) for the full SDK contract.
 - `AuthService`, `UserService`, `TokenService`, `DeviceService`
 - Types, errors, PKCE helpers, provider profile mappers
 
+## Testing
+
+```bash
+npm test              # all tests
+npm run test:unit     # crypto, redirect_uri, provider mapping
+npm run test:integration  # DB + Express flows (uses pg-mem by default)
+```
+
+Integration tests use **pg-mem** by default (no Docker required). Optional backends:
+
+- `TEST_DATABASE_URL=postgres://...` — run against an existing PostgreSQL instance
+- `USE_TESTCONTAINERS=1` — use Docker testcontainers when available
+
 ## License
 
 MIT

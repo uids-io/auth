@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Pool } from 'pg';
@@ -23,7 +23,14 @@ function getMigrationsDir(): string {
   throw new Error('Could not locate auth migration SQL files');
 }
 
-export async function runAuthMigrations(pool: Pool): Promise<string[]> {
+/** Normalize SQL for in-memory PostgreSQL emulators used in tests. */
+export function normalizeSqlForTestEmulator(sql: string): string {
+  return sql
+    .replace(/\binet\b/g, 'text')
+    .replace(/::inet/g, '::text');
+}
+
+export async function runAuthMigrations(pool: Pool, options?: { testMode?: boolean }): Promise<string[]> {
   await pool.query(`
     CREATE SCHEMA IF NOT EXISTS auth;
     CREATE TABLE IF NOT EXISTS auth.schema_migrations (
@@ -49,7 +56,11 @@ export async function runAuthMigrations(pool: Pool): Promise<string[]> {
       continue;
     }
 
-    const sql = readFileSync(join(migrationsDir, file), 'utf8');
+    let sql = readFileSync(join(migrationsDir, file), 'utf8');
+    if (options?.testMode) {
+      sql = normalizeSqlForTestEmulator(sql);
+    }
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
