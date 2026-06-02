@@ -6,7 +6,12 @@ import {
 } from "../../devices/handlers.js";
 import { getClientIp, getUserAgent } from "../helpers.js";
 import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
+import { validateBody } from "../middleware/validationMiddleware.js";
 import type { AuthRouterContext } from "../routerContext.js";
+import {
+	deviceRegisterBodySchema,
+	deviceRevokeBodySchema,
+} from "../validation/deviceValidation.js";
 
 export function registerDeviceRoutes(
 	router: Router,
@@ -15,6 +20,7 @@ export function registerDeviceRoutes(
 ): void {
 	router.post(
 		"/devices/register",
+		validateBody(deviceRegisterBodySchema),
 		asyncRouteHandler(async (req, res) => {
 			const device = await handleDeviceRegister(
 				context.kit,
@@ -45,6 +51,7 @@ export function registerDeviceRoutes(
 	router.post(
 		"/devices/revoke",
 		csrfMiddleware,
+		validateBody(deviceRevokeBodySchema),
 		asyncRouteHandler(async (req, res) => {
 			const userId = await context.resolveAuthenticatedUserId(req);
 			if (!userId) {

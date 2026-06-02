@@ -176,10 +176,8 @@ describe('integration express', () => {
       });
 
       expect(res.status).toBe(400);
-      expect(res.body).toEqual({
-        error: 'invalid_request',
-        error_description: 'Invalid platform',
-      });
+      expect(res.body.error).toBe('invalid_request');
+      expect(res.body.error_description).toMatch(/Invalid body:/);
     });
   });
 });

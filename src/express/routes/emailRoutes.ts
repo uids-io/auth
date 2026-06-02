@@ -7,7 +7,14 @@ import {
 import { parseDeviceContext } from "../../types.js";
 import { getClientIp, getUserAgent, parseFormBody } from "../helpers.js";
 import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
+import { validateBody, validateQuery } from "../middleware/validationMiddleware.js";
 import type { AuthRouterContext } from "../routerContext.js";
+import {
+	magicCallbackQuerySchema,
+	magicStartBodySchema,
+	passwordLoginBodySchema,
+	passwordRegisterBodySchema,
+} from "../validation/emailValidation.js";
 
 export function registerEmailRoutes(
 	router: Router,
@@ -15,17 +22,12 @@ export function registerEmailRoutes(
 ): void {
 	router.post(
 		"/email/password/register",
+		validateBody(passwordRegisterBodySchema),
 		asyncRouteHandler(async (req, res) => {
 			const body = req.body as Record<string, unknown>;
-			const email = body.email;
-			const password = body.password;
-			if (typeof email !== "string" || typeof password !== "string") {
-				res.status(400).json({ error: "invalid_request" });
-				return;
-			}
 			const result = await registerWithPassword(context.kit, {
-				email,
-				password,
+				email: body.email as string,
+				password: body.password as string,
 				displayName:
 					typeof body.display_name === "string" ? body.display_name : undefined,
 			});
@@ -35,24 +37,19 @@ export function registerEmailRoutes(
 
 	router.post(
 		"/email/password/login",
+		validateBody(passwordLoginBodySchema),
 		asyncRouteHandler(async (req, res) => {
 			const body = {
 				...parseFormBody(req.body),
 				...(req.body as object),
 			} as Record<string, unknown>;
-			const email = body.email;
-			const password = body.password;
-			if (typeof email !== "string" || typeof password !== "string") {
-				res.status(400).json({ error: "invalid_request" });
-				return;
-			}
 			const deviceCtx = parseDeviceContext(
 				req.headers as Record<string, string | string[] | undefined>,
 				body,
 			);
 			const result = await loginWithPassword(context.kit, {
-				email,
-				password,
+				email: body.email as string,
+				password: body.password as string,
 				clientId:
 					typeof body.client_id === "string" ? body.client_id : undefined,
 				pendingState:
@@ -75,15 +72,11 @@ export function registerEmailRoutes(
 
 	router.post(
 		"/email/magic/start",
+		validateBody(magicStartBodySchema),
 		asyncRouteHandler(async (req, res) => {
 			const body = req.body as Record<string, unknown>;
-			const email = body.email;
-			if (typeof email !== "string") {
-				res.status(400).json({ error: "invalid_request" });
-				return;
-			}
 			await startMagicLink(context.kit, {
-				email,
+				email: body.email as string,
 				clientId:
 					typeof body.client_id === "string" ? body.client_id : undefined,
 				redirectUri:
@@ -102,14 +95,10 @@ export function registerEmailRoutes(
 
 	router.get(
 		"/email/magic/callback",
+		validateQuery(magicCallbackQuerySchema),
 		asyncRouteHandler(async (req, res) => {
-			const token = req.query.token;
-			if (typeof token !== "string") {
-				res.status(400).json({ error: "invalid_request" });
-				return;
-			}
 			const result = await consumeMagicLink(context.kit, {
-				token,
+				token: req.query.token as string,
 				ip: getClientIp(req),
 				userAgent: getUserAgent(req),
 			});
