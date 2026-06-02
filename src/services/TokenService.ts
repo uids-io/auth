@@ -16,12 +16,13 @@ import { verifyCodeChallenge } from "../crypto/pkce.js";
 import { generateOpaqueToken } from "../crypto/random.js";
 import { hashToken, verifyTokenHash } from "../crypto/tokens.js";
 import { InvalidRequestError, UnauthorizedError } from "../errors.js";
-import type {
-	AccessTokenClaims,
-	AuthUser,
-	Device,
-	DevicePlatform,
-	TokenResponse,
+import {
+	type AccessTokenClaims,
+	type AuthUser,
+	type Device,
+	type DevicePlatform,
+	devicePlatformSchema,
+	type TokenResponse,
 } from "../types.js";
 import type { SessionService } from "./SessionService.js";
 
@@ -70,9 +71,7 @@ const accessTokenClaimsSchema = z.object({
 	email: z.string().optional(),
 	email_verified: z.boolean().optional(),
 	device_id: z.string().optional(),
-	platform: z
-		.enum(["web", "ios", "android", "desktop", "unknown"])
-		.optional(),
+	platform: devicePlatformSchema.optional(),
 });
 
 export class TokenService {

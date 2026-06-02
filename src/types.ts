@@ -1,18 +1,20 @@
+import { z } from "zod";
+
 export type UserStatus = "active" | "disabled" | "deleted";
 export type SessionStatus = "active" | "revoked" | "expired";
 export type DeviceStatus = "active" | "revoked";
-export type DevicePlatform = "web" | "ios" | "android" | "desktop" | "unknown";
-export type OAuthClientType = "public" | "confidential";
-export type SameSiteOption = "strict" | "lax" | "none";
-export type AuthContextType = "oauth_authorize" | "social_login" | "magic_link";
-export type AuthProviders = "google" | "microsoft" | "email";
-export const DEVICE_PLATFORMS = [
+export const devicePlatformSchema = z.enum([
 	"web",
 	"ios",
 	"android",
 	"desktop",
 	"unknown",
-] as const;
+]);
+export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
+export type OAuthClientType = "public" | "confidential";
+export type SameSiteOption = "strict" | "lax" | "none";
+export type AuthContextType = "oauth_authorize" | "social_login" | "magic_link";
+export type AuthProviders = "google" | "microsoft" | "email";
 
 export interface AuthUser {
 	id: number;
@@ -155,10 +157,7 @@ export interface SessionRecord {
 export const DEVICE_ID_HEADER = "x-uids-device-id";
 
 export function isDevicePlatform(value: unknown): value is DevicePlatform {
-	return (
-		typeof value === "string" &&
-		(DEVICE_PLATFORMS as readonly string[]).includes(value)
-	);
+	return devicePlatformSchema.safeParse(value).success;
 }
 
 export function parseDeviceContext(
