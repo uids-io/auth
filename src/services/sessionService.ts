@@ -174,7 +174,10 @@ export class SessionService {
 	async revokeSessionByRefreshToken(
 		refreshToken: string,
 	): Promise<{ sessionId: number; userId: number } | null> {
-		const { rows } = await this.pool.query<{ session_id: string; user_id: string }>(
+		const { rows } = await this.pool.query<{
+			session_id: string;
+			user_id: string;
+		}>(
 			`SELECT rt.session_id, s.user_id FROM auth.refresh_tokens rt
        JOIN auth.sessions s ON s.id = rt.session_id
        WHERE rt.token_hash = $1`,

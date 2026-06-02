@@ -1,6 +1,6 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { isAuthError, UnauthorizedError } from "../errors.js";
-import { verifyAccessToken } from "../services/TokenService.js";
+import { verifyAccessToken } from "../services/tokenService.js";
 import type { AuthContext, DevicePlatform } from "../types.js";
 
 export interface RequireAuthConfig {

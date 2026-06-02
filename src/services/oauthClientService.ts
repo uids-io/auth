@@ -60,7 +60,7 @@ export class OAuthClientService {
 	async requireClient(clientId: string): Promise<OAuthClient> {
 		const client = await this.getClient(clientId);
 
-		if (!client ?? !client?.enabled) {
+		if (client == null || !client?.enabled) {
 			throw new InvalidRequestError("Invalid client_id", "invalid_client");
 		}
 

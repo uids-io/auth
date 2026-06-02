@@ -1,12 +1,12 @@
 import type { Pool } from "pg";
 import { z } from "zod";
 import { createPool, isPoolOwned } from "./db/pool.js";
-import { AuthService } from "./services/AuthService.js";
-import { DeviceService } from "./services/DeviceService.js";
-import { OAuthClientService } from "./services/OAuthClientService.js";
-import { SessionService } from "./services/SessionService.js";
-import { TokenService } from "./services/TokenService.js";
-import { UserService } from "./services/UserService.js";
+import { AuthService } from "./services/authService.js";
+import { DeviceService } from "./services/deviceService.js";
+import { OAuthClientService } from "./services/oauthClientService.js";
+import { SessionService } from "./services/sessionService.js";
+import { TokenService } from "./services/tokenService.js";
+import { UserService } from "./services/userService.js";
 import type {
 	AuthUser,
 	Device,

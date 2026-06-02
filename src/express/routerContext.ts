@@ -29,13 +29,16 @@ function getSessionToken(req: Request, kit: AuthKit): string | undefined {
 	return undefined;
 }
 
-async function getBearerUserId(req: Request, kit: AuthKit): Promise<number | null> {
+async function getBearerUserId(
+	req: Request,
+	kit: AuthKit,
+): Promise<number | null> {
 	const authHeader = req.headers.authorization;
 	if (!authHeader?.startsWith("Bearer ")) {
 		return null;
 	}
 	try {
-		const { verifyAccessToken } = await import("../services/TokenService.js");
+		const { verifyAccessToken } = await import("../services/tokenService.js");
 		const claims = await verifyAccessToken({
 			token: authHeader.slice(7),
 			issuer: kit.config.issuer,
@@ -65,7 +68,8 @@ async function resolveAuthenticatedUserId(
 export function createAuthRouterContext(kit: AuthKit): AuthRouterContext {
 	return {
 		kit,
-		getSessionToken: (req: Request): string | undefined => getSessionToken(req, kit),
+		getSessionToken: (req: Request): string | undefined =>
+			getSessionToken(req, kit),
 		setSessionCookie: (
 			res: Response,
 			sessionToken: string,

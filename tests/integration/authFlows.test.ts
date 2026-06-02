@@ -77,7 +77,7 @@ describe('integration auth flows', () => {
         device,
       });
 
-      const { verifyAccessToken } = await import('../../src/services/TokenService.js');
+      const { verifyAccessToken } = await import('../../src/services/tokenService.js');
       const claims = await verifyAccessToken({
         token: tokens.access_token,
         issuer: kit.config.issuer,

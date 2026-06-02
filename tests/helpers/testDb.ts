@@ -1,7 +1,7 @@
 import { newDb, DataType, type IMemoryDb } from 'pg-mem';
 import type { Pool } from 'pg';
 import { runAuthMigrations } from '../../src/db/migrations.js';
-import { seedDefaultPortalClients } from '../../src/services/OAuthClientService.js';
+import { seedDefaultPortalClients } from '../../src/services/oauthClientService.js';
 
 let pool: Pool | undefined;
 let memoryDb: IMemoryDb | undefined;

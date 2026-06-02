@@ -19,20 +19,20 @@ export { createAuthRouter } from "./express/createAuthRouter.js";
 export { type RequireAuthConfig, requireAuth } from "./express/requireAuth.js";
 export { mapGoogleProfile } from "./oauth/providers/google.js";
 export { mapMicrosoftProfile } from "./oauth/providers/microsoft.js";
-export { AuthService } from "./services/AuthService.js";
-export { DeviceService } from "./services/DeviceService.js";
+export { AuthService } from "./services/authService.js";
+export { DeviceService } from "./services/deviceService.js";
 export {
 	OAuthClientService,
 	type SeedPortalClientsInput,
 	seedDefaultPortalClients,
-} from "./services/OAuthClientService.js";
-export { SessionService } from "./services/SessionService.js";
+} from "./services/oauthClientService.js";
+export { SessionService } from "./services/sessionService.js";
 export {
 	TokenService,
 	type VerifyAccessTokenOptions,
 	verifyAccessToken,
-} from "./services/TokenService.js";
-export { UserService } from "./services/UserService.js";
+} from "./services/tokenService.js";
+export { UserService } from "./services/userService.js";
 export type {
 	AccessTokenClaims,
 	AuthContext,

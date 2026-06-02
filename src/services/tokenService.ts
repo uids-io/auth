@@ -24,7 +24,7 @@ import {
 	devicePlatformSchema,
 	type TokenResponse,
 } from "../types.js";
-import type { SessionService } from "./SessionService.js";
+import type { SessionService } from "./sessionService.js";
 
 interface SigningKeyRow {
 	id: string;

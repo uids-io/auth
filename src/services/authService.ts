@@ -2,10 +2,10 @@ import type { Pool } from "pg";
 import type { AuthConfig } from "../config.js";
 import { RateLimitError } from "../errors.js";
 import type { PendingAuthContext } from "../types.js";
-import type { DeviceService } from "./DeviceService.js";
-import type { SessionService } from "./SessionService.js";
-import type { TokenService } from "./TokenService.js";
-import type { UserService } from "./UserService.js";
+import type { DeviceService } from "./deviceService.js";
+import type { SessionService } from "./sessionService.js";
+import type { TokenService } from "./tokenService.js";
+import type { UserService } from "./userService.js";
 
 export class AuthService {
 	constructor(
