@@ -43,10 +43,12 @@ export function registerEmailRoutes(
 				...parseFormBody(req.body),
 				...(req.body as object),
 			} as Record<string, unknown>;
+
 			const deviceCtx = parseDeviceContext(
 				req.headers as Record<string, string | string[] | undefined>,
 				body,
 			);
+
 			const result = await loginWithPassword(context.kit, {
 				email: body.email as string,
 				password: body.password as string,
@@ -61,11 +63,14 @@ export function registerEmailRoutes(
 				deviceId: deviceCtx.deviceId,
 				platform: deviceCtx.platform,
 			});
+
 			context.setSessionCookie(res, result.sessionToken, result.csrfToken);
+
 			if (result.redirectUrl) {
 				res.redirect(result.redirectUrl);
 				return;
 			}
+
 			res.json({ success: true, user_id: result.userId });
 		}),
 	);
@@ -75,6 +80,7 @@ export function registerEmailRoutes(
 		validateBody(magicStartBodySchema),
 		asyncRouteHandler(async (req, res) => {
 			const body = req.body as Record<string, unknown>;
+
 			await startMagicLink(context.kit, {
 				email: body.email as string,
 				clientId:
@@ -89,6 +95,7 @@ export function registerEmailRoutes(
 				codeChallengeMethod:
 					body.code_challenge_method === "S256" ? "S256" : undefined,
 			});
+
 			res.json({ success: true });
 		}),
 	);
@@ -102,7 +109,9 @@ export function registerEmailRoutes(
 				ip: getClientIp(req),
 				userAgent: getUserAgent(req),
 			});
+
 			context.setSessionCookie(res, result.sessionToken, result.csrfToken);
+      
 			res.redirect(result.redirectUrl);
 		}),
 	);

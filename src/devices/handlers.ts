@@ -1,6 +1,10 @@
 import type { AuthKit } from "../config.js";
 import { InvalidRequestError } from "../errors.js";
-import { isDevicePlatform, type Device, type DevicePlatform } from "../types.js";
+import {
+	type Device,
+	type DevicePlatform,
+	isDevicePlatform,
+} from "../types.js";
 
 export async function handleDeviceRegister(
 	kit: AuthKit,

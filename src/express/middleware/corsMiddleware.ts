@@ -9,7 +9,7 @@ export function createCorsMiddleware(kit: AuthKit) {
 		next: NextFunction,
 	): Promise<void> => {
 		const origin = req.headers.origin;
-    
+
 		if (origin) {
 			const allowed = await kit.oauthClients.getAllAllowedOrigins(
 				kit.config.globalAllowedOrigins,

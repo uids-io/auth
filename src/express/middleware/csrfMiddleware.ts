@@ -31,7 +31,7 @@ export function createCsrfMiddleware(kit: AuthKit) {
 			});
 			return;
 		}
-    
+
 		next();
 	};
 }

@@ -13,10 +13,12 @@ function formatValidationErrorMessage(
 		Array.isArray((error as { issues?: unknown[] }).issues)
 	) {
 		const firstIssue = (error as { issues: Array<{ message?: string }> }).issues[0];
+
 		if (firstIssue?.message) {
 			return `Invalid ${scope}: ${firstIssue.message}`;
 		}
 	}
+
 	return `Invalid ${scope}`;
 }
 
@@ -29,6 +31,7 @@ function createValidator(
 			const input =
 				scope === "body" ? req.body : scope === "query" ? req.query : req.params;
 			const parsed = schema.parse(input);
+
 			if (scope === "body") {
 				req.body = parsed;
 			} else if (scope === "query") {
@@ -36,6 +39,7 @@ function createValidator(
 			} else {
 				req.params = parsed;
 			}
+      
 			next();
 		} catch (error) {
 			next(
