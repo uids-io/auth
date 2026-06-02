@@ -16,9 +16,11 @@ import {
 	mapMicrosoftProfile,
 } from "./providers/microsoft.js";
 
+export type SocialProvider = "google" | "microsoft";
+
 export async function startSocialLogin(
 	kit: AuthKit,
-	provider: "google" | "microsoft",
+	provider: SocialProvider,
 	params: { state?: string; pendingState?: string },
 ): Promise<string> {
 	const state = params.pendingState ?? params.state ?? generateOpaqueToken(16);
@@ -55,7 +57,7 @@ export async function startSocialLogin(
 
 export async function handleSocialCallback(
 	kit: AuthKit,
-	provider: "google" | "microsoft",
+	provider: SocialProvider,
 	params: { code: string; state: string; ip?: string; userAgent?: string },
 ): Promise<{ redirectUrl: string; userId: number }> {
 	let profile: ReturnType<typeof mapGoogleProfile>;

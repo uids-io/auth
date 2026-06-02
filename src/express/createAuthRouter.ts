@@ -13,16 +13,17 @@ import {
 } from "../email/passwordLogin.js";
 import { isAuthError } from "../errors.js";
 import { handleAuthorize } from "../oauth/authorize.js";
-import { handleSocialCallback, startSocialLogin } from "../oauth/callback.js";
+import {
+	handleSocialCallback,
+	type SocialProvider,
+	startSocialLogin,
+} from "../oauth/callback.js";
 import { handleLogout } from "../oauth/logout.js";
 import { handleRefresh } from "../oauth/refresh.js";
 import { handleTokenExchange } from "../oauth/token.js";
 import { getOpenIdConfiguration } from "../oidc/discovery.js";
 import { getJwks } from "../oidc/jwks.js";
-import {
-	DEVICE_ID_HEADER,
-	parseDeviceContext,
-} from "../types.js";
+import { DEVICE_ID_HEADER, parseDeviceContext } from "../types.js";
 import {
 	getClientIp,
 	getUserAgent,
@@ -137,6 +138,54 @@ function sendError(res: Response, error: unknown): void {
 	res.status(500).json({
 		error: "server_error",
 		error_description: "Internal server error",
+	});
+}
+
+function sendUnauthorized(res: Response): void {
+	res.status(401).json({ error: "unauthorized" });
+}
+
+function getQueryStringParam(value: unknown): string | undefined {
+	return typeof value === "string" ? value : undefined;
+}
+
+function registerSocialProviderRoutes(
+	router: Router,
+	kit: AuthKit,
+	provider: SocialProvider,
+): void {
+	router.get(`/oauth/${provider}/start`, async (req, res, next) => {
+		try {
+			const state = getQueryStringParam(req.query.state);
+			const url = await startSocialLogin(kit, provider, { pendingState: state });
+			res.redirect(url);
+		} catch (error) {
+			next(error);
+		}
+	});
+
+	router.get(`/oauth/${provider}/callback`, async (req, res, next) => {
+		try {
+			const code = getQueryStringParam(req.query.code);
+			const state = getQueryStringParam(req.query.state);
+			if (!code || !state) {
+				res.status(400).json({ error: "invalid_request" });
+				return;
+			}
+			const result = await handleSocialCallback(kit, provider, {
+				code,
+				state,
+				ip: getClientIp(req),
+				userAgent: getUserAgent(req),
+			});
+			const session = await kit.sessions.createSession({
+				userId: result.userId,
+			});
+			setSessionCookie(res, kit, session.sessionToken, session.csrfToken);
+			res.redirect(result.redirectUrl);
+		} catch (error) {
+			next(error);
+		}
 	});
 }
 
@@ -277,79 +326,8 @@ export function createAuthRouter(kit: AuthKit): Router {
 		}
 	});
 
-	router.get("/oauth/google/start", async (req, res, next) => {
-		try {
-			const state =
-				typeof req.query.state === "string" ? req.query.state : undefined;
-			const url = await startSocialLogin(kit, "google", {
-				pendingState: state,
-			});
-			res.redirect(url);
-		} catch (error) {
-			next(error);
-		}
-	});
-
-	router.get("/oauth/google/callback", async (req, res, next) => {
-		try {
-			const code = req.query.code;
-			const state = req.query.state;
-			if (typeof code !== "string" || typeof state !== "string") {
-				res.status(400).json({ error: "invalid_request" });
-				return;
-			}
-			const result = await handleSocialCallback(kit, "google", {
-				code,
-				state,
-				ip: getClientIp(req),
-				userAgent: getUserAgent(req),
-			});
-			const session = await kit.sessions.createSession({
-				userId: result.userId,
-			});
-			setSessionCookie(res, kit, session.sessionToken, session.csrfToken);
-			res.redirect(result.redirectUrl);
-		} catch (error) {
-			next(error);
-		}
-	});
-
-	router.get("/oauth/microsoft/start", async (req, res, next) => {
-		try {
-			const state =
-				typeof req.query.state === "string" ? req.query.state : undefined;
-			const url = await startSocialLogin(kit, "microsoft", {
-				pendingState: state,
-			});
-			res.redirect(url);
-		} catch (error) {
-			next(error);
-		}
-	});
-
-	router.get("/oauth/microsoft/callback", async (req, res, next) => {
-		try {
-			const code = req.query.code;
-			const state = req.query.state;
-			if (typeof code !== "string" || typeof state !== "string") {
-				res.status(400).json({ error: "invalid_request" });
-				return;
-			}
-			const result = await handleSocialCallback(kit, "microsoft", {
-				code,
-				state,
-				ip: getClientIp(req),
-				userAgent: getUserAgent(req),
-			});
-			const session = await kit.sessions.createSession({
-				userId: result.userId,
-			});
-			setSessionCookie(res, kit, session.sessionToken, session.csrfToken);
-			res.redirect(result.redirectUrl);
-		} catch (error) {
-			next(error);
-		}
-	});
+	registerSocialProviderRoutes(router, kit, "google");
+	registerSocialProviderRoutes(router, kit, "microsoft");
 
 	router.post("/email/password/register", async (req, res, next) => {
 		try {
@@ -464,7 +442,7 @@ export function createAuthRouter(kit: AuthKit): Router {
 		try {
 			const sessionToken = getSessionToken(req, kit);
 			if (!sessionToken) {
-				res.status(401).json({ error: "unauthorized" });
+				sendUnauthorized(res);
 				return;
 			}
 			const session = await kit.sessions.requireSessionByToken(sessionToken);
@@ -482,7 +460,7 @@ export function createAuthRouter(kit: AuthKit): Router {
 			try {
 				const sessionToken = getSessionToken(req, kit);
 				if (!sessionToken) {
-					res.status(401).json({ error: "unauthorized" });
+					sendUnauthorized(res);
 					return;
 				}
 				const session = await kit.sessions.requireSessionByToken(sessionToken);
@@ -513,7 +491,7 @@ export function createAuthRouter(kit: AuthKit): Router {
 		try {
 			const userId = await resolveAuthenticatedUserId(req, kit);
 			if (!userId) {
-				res.status(401).json({ error: "unauthorized" });
+				sendUnauthorized(res);
 				return;
 			}
 			const devices = await handleDeviceList(kit, userId);
@@ -530,7 +508,7 @@ export function createAuthRouter(kit: AuthKit): Router {
 			try {
 				const userId = await resolveAuthenticatedUserId(req, kit);
 				if (!userId) {
-					res.status(401).json({ error: "unauthorized" });
+					sendUnauthorized(res);
 					return;
 				}
 				await handleDeviceRevoke(
