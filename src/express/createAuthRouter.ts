@@ -21,7 +21,6 @@ import { getOpenIdConfiguration } from "../oidc/discovery.js";
 import { getJwks } from "../oidc/jwks.js";
 import {
 	DEVICE_ID_HEADER,
-	type DevicePlatform,
 	parseDeviceContext,
 } from "../types.js";
 import {
@@ -401,7 +400,7 @@ export function createAuthRouter(kit: AuthKit): Router {
 				ip: getClientIp(req),
 				userAgent: getUserAgent(req),
 				deviceId: deviceCtx.deviceId,
-				platform: deviceCtx.platform as DevicePlatform | undefined,
+				platform: deviceCtx.platform,
 			});
 			setSessionCookie(res, kit, result.sessionToken, result.csrfToken);
 			if (result.redirectUrl) {

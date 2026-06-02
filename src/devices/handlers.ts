@@ -1,6 +1,6 @@
 import type { AuthKit } from "../config.js";
 import { InvalidRequestError } from "../errors.js";
-import type { Device, DevicePlatform } from "../types.js";
+import { isDevicePlatform, type Device, type DevicePlatform } from "../types.js";
 
 export async function handleDeviceRegister(
 	kit: AuthKit,
@@ -19,6 +19,9 @@ export async function handleDeviceRegister(
 	}
 	if (typeof platform !== "string") {
 		throw new InvalidRequestError("Missing platform", "invalid_request");
+	}
+	if (!isDevicePlatform(platform)) {
+		throw new InvalidRequestError("Invalid platform", "invalid_request");
 	}
 
 	await kit.oauthClients.requireClient(clientId);

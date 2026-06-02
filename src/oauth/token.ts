@@ -1,10 +1,11 @@
 import type { AuthKit } from "../config.js";
 import { InvalidRequestError } from "../errors.js";
+import type { TokenResponse } from "../types.js";
 
 export async function handleTokenExchange(
 	kit: AuthKit,
 	body: Record<string, unknown>,
-): Promise<import("../types.js").TokenResponse> {
+): Promise<TokenResponse> {
 	const grantType = body.grant_type;
 	if (grantType !== "authorization_code") {
 		throw new InvalidRequestError(

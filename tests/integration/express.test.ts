@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { SignJWT } from 'jose';
 import request from 'supertest';
 import { createTestAuthKit, setupTestDb, teardownTestDb } from '../helpers/testDb.js';
 import type { AuthKit } from '../../src/config.js';
@@ -59,7 +60,28 @@ describe('integration express', () => {
       });
     });
 
-    it.todo('rejects token with missing required claims (sub/client_id)');
+    it('rejects token missing required claims', async () => {
+      const { kid, privateKey } = await kit.tokens.getActiveSigningKey();
+      const token = await new SignJWT({
+        client_id: 'merchant_portal_web',
+      })
+        .setProtectedHeader({ alg: 'RS256', kid })
+        .setIssuer(kit.config.issuer)
+        .setAudience(kit.config.apiAudience)
+        .setIssuedAt()
+        .setExpirationTime('5m')
+        .sign(privateKey);
+
+      const res = await request(apiApp)
+        .get('/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({
+        error: 'invalid_token',
+        error_description: 'Token validation failed',
+      });
+    });
   });
 
   describe('auth router OIDC metadata', () => {
@@ -113,6 +135,22 @@ describe('integration express', () => {
 
       expect(res.status).toBe(401);
       expect(res.body).toEqual({ error: 'unauthorized' });
+    });
+  });
+
+  describe('device validation', () => {
+    it('rejects unsupported device platform', async () => {
+      const res = await request(authApp).post('/devices/register').send({
+        client_id: 'merchant_portal_web',
+        device_id: 'd-123',
+        platform: 'playstation',
+      });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({
+        error: 'invalid_request',
+        error_description: 'Invalid platform',
+      });
     });
   });
 });

@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Pool } from "pg";
 import type { AuthConfig } from "../config.js";
 import { generateOpaqueToken } from "../crypto/random.js";
@@ -35,6 +35,19 @@ export class SessionService {
 
 	generateCsrfToken(): string {
 		return randomBytes(32).toString("base64url");
+	}
+
+	private getCookieSigningSecret(): string {
+		const secret = this.config.csrf?.secret;
+		if (secret) {
+			return secret;
+		}
+		if (process.env.NODE_ENV === "production") {
+			throw new InternalServerError(
+				"Session cookie signing requires config.csrf.secret in production",
+			);
+		}
+		return this.config.issuer;
 	}
 
 	async createSession(params: {
@@ -131,7 +144,7 @@ export class SessionService {
 	}
 
 	signSessionCookie(sessionToken: string): string {
-		const secret = this.config.csrf?.secret ?? this.config.issuer;
+		const secret = this.getCookieSigningSecret();
 		const sig = createHmac("sha256", secret)
 			.update(sessionToken)
 			.digest("base64url");
@@ -145,11 +158,16 @@ export class SessionService {
 		}
 		const token = signed.slice(0, lastDot);
 		const sig = signed.slice(lastDot + 1);
-		const secret = this.config.csrf?.secret ?? this.config.issuer;
+		const secret = this.getCookieSigningSecret();
 		const expected = createHmac("sha256", secret)
 			.update(token)
 			.digest("base64url");
-		if (expected !== sig) {
+		const expectedBuffer = Buffer.from(expected);
+		const providedBuffer = Buffer.from(sig);
+		if (
+			expectedBuffer.length !== providedBuffer.length ||
+			!timingSafeEqual(expectedBuffer, providedBuffer)
+		) {
 			return null;
 		}
 		return token;

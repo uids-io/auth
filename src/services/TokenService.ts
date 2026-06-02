@@ -10,6 +10,7 @@ import {
 	SignJWT,
 } from "jose";
 import type { Pool, PoolClient } from "pg";
+import { z } from "zod";
 import type { AuthConfig } from "../config.js";
 import { verifyCodeChallenge } from "../crypto/pkce.js";
 import { generateOpaqueToken } from "../crypto/random.js";
@@ -57,6 +58,22 @@ export interface VerifyAccessTokenOptions {
 
 let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 let cachedJwksUrl: string | undefined;
+
+const accessTokenClaimsSchema = z.object({
+	iss: z.string(),
+	sub: z.string(),
+	aud: z.union([z.string(), z.array(z.string())]),
+	exp: z.number(),
+	iat: z.number(),
+	scope: z.string().optional(),
+	client_id: z.string().optional(),
+	email: z.string().optional(),
+	email_verified: z.boolean().optional(),
+	device_id: z.string().optional(),
+	platform: z
+		.enum(["web", "ios", "android", "desktop", "unknown"])
+		.optional(),
+});
 
 export class TokenService {
 	private privateKeyCache = new Map<string, CryptoKey>();
@@ -543,7 +560,7 @@ export async function verifyAccessToken(
 		audience: options.audience,
 	});
 
-	return payload as unknown as AccessTokenClaims;
+	return accessTokenClaimsSchema.parse(payload) as AccessTokenClaims;
 }
 
 export { verifyTokenHash };

@@ -1,10 +1,11 @@
 import type { AuthKit } from "../config.js";
 import { InvalidRequestError } from "../errors.js";
+import type { TokenResponse } from "../types.js";
 
 export async function handleRefresh(
 	kit: AuthKit,
 	body: Record<string, unknown>,
-): Promise<import("../types.js").TokenResponse> {
+): Promise<TokenResponse> {
 	const refreshToken = body.refresh_token;
 
 	if (typeof refreshToken !== "string") {
