@@ -136,6 +136,35 @@ describe('integration express', () => {
       expect(res.status).toBe(401);
       expect(res.body).toEqual({ error: 'unauthorized' });
     });
+
+    it('allows logout by refresh token without session cookie', async () => {
+      const user = await kit.users.createUser({ email: 'logout-refresh@test.com', emailVerified: true });
+      const { session } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+      const tokens = await kit.tokens.issueTokens({
+        user,
+        clientId: 'merchant_portal_web',
+        scopes: ['openid'],
+        sessionId: session.id,
+      });
+      const refreshToken = tokens.refresh_token;
+      expect(refreshToken).toBeDefined();
+      if (!refreshToken) {
+        throw new Error('Expected refresh token to be present');
+      }
+
+      const res = await request(authApp)
+        .post('/logout')
+        .send({ refresh_token: refreshToken });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true });
+
+      await expect(kit.tokens.refreshAccessToken(refreshToken)).rejects.toThrow(
+        /invalid|revoked|reuse/i,
+      );
+    });
   });
 
   describe('device validation', () => {

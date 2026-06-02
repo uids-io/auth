@@ -104,13 +104,45 @@ describe('integration auth flows', () => {
         scopes: ['openid'],
         sessionId: session.id,
       });
-      const oldRefresh = initial.refresh_token!;
+      const oldRefresh = initial.refresh_token;
+      expect(oldRefresh).toBeDefined();
+      if (!oldRefresh) {
+        throw new Error('Expected refresh token to be present');
+      }
 
       const rotated = await kit.tokens.refreshAccessToken(oldRefresh);
       expect(rotated.tokens.refresh_token).toBeDefined();
       expect(rotated.tokens.refresh_token).not.toBe(oldRefresh);
 
       await expect(kit.tokens.refreshAccessToken(oldRefresh)).rejects.toThrow(/reuse/);
+    });
+
+    it('revokes refresh tokens when all user sessions are revoked', async () => {
+      const user = await kit.users.createUser({
+        email: 'revoke-all@test.com',
+        emailVerified: true,
+      });
+      const { session } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+      const initial = await kit.tokens.issueTokens({
+        user,
+        clientId: 'merchant_portal_web',
+        scopes: ['openid'],
+        sessionId: session.id,
+      });
+      const refreshToken = initial.refresh_token;
+      expect(refreshToken).toBeDefined();
+      if (!refreshToken) {
+        throw new Error('Expected refresh token to be present');
+      }
+
+      await kit.sessions.revokeAllUserSessions(user.id);
+
+      await expect(kit.tokens.refreshAccessToken(refreshToken)).rejects.toThrow(
+        /invalid|revoked/i,
+      );
     });
   });
 

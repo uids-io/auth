@@ -434,12 +434,9 @@ export class TokenService {
 					refreshTtl,
 				],
 			);
-
-			await client.query("COMMIT");
-
 			const userId = Number(refreshTokenRow.user_id);
 			const clientId = refreshTokenRow.client_id ?? "unknown";
-			const { rows: userRows } = await this.pool.query<{
+			const { rows: userRows } = await client.query<{
 				primary_email: string | null;
 				display_name: string | null;
 				email_verified: boolean;
@@ -493,6 +490,7 @@ export class TokenService {
 				includeRefreshToken: true,
 			});
 			tokens.refresh_token = newRefreshToken;
+			await client.query("COMMIT");
 
 			return {
 				tokens,

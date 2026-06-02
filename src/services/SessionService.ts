@@ -124,23 +124,69 @@ export class SessionService {
 	}
 
 	async revokeSession(sessionId: number): Promise<void> {
-		await this.pool.query(
-			`UPDATE auth.sessions SET status = 'revoked', revoked_at = now() WHERE id = $1`,
-			[sessionId],
-		);
-		await this.pool.query(
-			`UPDATE auth.refresh_tokens SET revoked_at = now()
+		const client = await this.pool.connect();
+		try {
+			await client.query("BEGIN");
+			await client.query(
+				`UPDATE auth.sessions SET status = 'revoked', revoked_at = now() WHERE id = $1`,
+				[sessionId],
+			);
+			await client.query(
+				`UPDATE auth.refresh_tokens SET revoked_at = now()
        WHERE session_id = $1 AND revoked_at IS NULL`,
-			[sessionId],
-		);
+				[sessionId],
+			);
+			await client.query("COMMIT");
+		} catch (error) {
+			await client.query("ROLLBACK");
+			throw error;
+		} finally {
+			client.release();
+		}
 	}
 
 	async revokeAllUserSessions(userId: number): Promise<void> {
-		await this.pool.query(
-			`UPDATE auth.sessions SET status = 'revoked', revoked_at = now()
-       WHERE user_id = $1 AND status = 'active'`,
-			[userId],
+		const client = await this.pool.connect();
+		try {
+			await client.query("BEGIN");
+			const { rows } = await client.query<{ id: string }>(
+				`UPDATE auth.sessions SET status = 'revoked', revoked_at = now()
+       WHERE user_id = $1 AND status = 'active'
+       RETURNING id`,
+				[userId],
+			);
+			if (rows.length > 0) {
+				await client.query(
+					`UPDATE auth.refresh_tokens SET revoked_at = now()
+         WHERE session_id = ANY($1::bigint[]) AND revoked_at IS NULL`,
+					[rows.map((row) => Number(row.id))],
+				);
+			}
+			await client.query("COMMIT");
+		} catch (error) {
+			await client.query("ROLLBACK");
+			throw error;
+		} finally {
+			client.release();
+		}
+	}
+
+	async revokeSessionByRefreshToken(
+		refreshToken: string,
+	): Promise<{ sessionId: number; userId: number } | null> {
+		const { rows } = await this.pool.query<{ session_id: string; user_id: string }>(
+			`SELECT rt.session_id, s.user_id FROM auth.refresh_tokens rt
+       JOIN auth.sessions s ON s.id = rt.session_id
+       WHERE rt.token_hash = $1`,
+			[hashToken(refreshToken)],
 		);
+		if (!rows[0]) {
+			return null;
+		}
+		const sessionId = Number(rows[0].session_id);
+		const userId = Number(rows[0].user_id);
+		await this.revokeSession(sessionId);
+		return { sessionId, userId };
 	}
 
 	signSessionCookie(sessionToken: string): string {

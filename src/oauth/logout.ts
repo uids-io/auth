@@ -18,26 +18,11 @@ export async function handleLogout(
 	}
 
 	if (params.refreshToken) {
-		const tokenHash = (await import("../crypto/tokens.js")).hashToken(
+		const revoked = await kit.sessions.revokeSessionByRefreshToken(
 			params.refreshToken,
 		);
-
-		const { rows } = await kit.pool.query<{
-			session_id: string;
-			user_id: string;
-		}>(
-			`SELECT rt.session_id, s.user_id FROM auth.refresh_tokens rt
-       JOIN auth.sessions s ON s.id = rt.session_id
-       WHERE rt.token_hash = $1`,
-			[tokenHash],
-		);
-
-		if (rows[0]) {
-			await kit.sessions.revokeSession(Number(rows[0].session_id));
-			await kit.config.hooks.onLogout?.(
-				Number(rows[0].user_id),
-				Number(rows[0].session_id),
-			);
+		if (revoked) {
+			await kit.config.hooks.onLogout?.(revoked.userId, revoked.sessionId);
 		}
 	}
 }
