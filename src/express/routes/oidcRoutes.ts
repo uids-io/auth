@@ -2,6 +2,7 @@ import type { Router } from "express";
 import { getOpenIdConfiguration } from "../../oidc/discovery.js";
 import { getJwks } from "../../oidc/jwks.js";
 import { renderLoginPage } from "../helpers.js";
+import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
 import type { AuthRouterContext } from "../routerContext.js";
 
 export function registerOidcRoutes(
@@ -12,13 +13,12 @@ export function registerOidcRoutes(
 		res.json(getOpenIdConfiguration(context.kit));
 	});
 
-	router.get("/.well-known/jwks.json", async (_req, res, next) => {
-		try {
+	router.get(
+		"/.well-known/jwks.json",
+		asyncRouteHandler(async (_req, res) => {
 			res.json(await getJwks(context.kit));
-		} catch (error) {
-			next(error);
-		}
-	});
+		}),
+	);
 
 	router.get("/login", (req, res) => {
 		res.type("html").send(

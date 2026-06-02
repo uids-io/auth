@@ -1,4 +1,5 @@
 import type { RequestHandler, Router } from "express";
+import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
 import type { AuthRouterContext } from "../routerContext.js";
 
 export function registerSessionRoutes(
@@ -6,35 +7,36 @@ export function registerSessionRoutes(
 	context: AuthRouterContext,
 	csrfMiddleware: RequestHandler,
 ): void {
-	router.get("/session", async (req, res, next) => {
-		try {
+	router.get(
+		"/session",
+		asyncRouteHandler(async (req, res) => {
 			const sessionToken = context.getSessionToken(req);
 			if (!sessionToken) {
 				context.sendUnauthorized(res);
 				return;
 			}
-			const session = await context.kit.sessions.requireSessionByToken(sessionToken);
+			const session =
+				await context.kit.sessions.requireSessionByToken(sessionToken);
 			const user = await context.kit.users.findById(session.userId);
 			res.json({ session, user });
-		} catch (error) {
-			next(error);
-		}
-	});
+		}),
+	);
 
-	router.post("/session/revoke", csrfMiddleware, async (req, res, next) => {
-		try {
+	router.post(
+		"/session/revoke",
+		csrfMiddleware,
+		asyncRouteHandler(async (req, res) => {
 			const sessionToken = context.getSessionToken(req);
 			if (!sessionToken) {
 				context.sendUnauthorized(res);
 				return;
 			}
-			const session = await context.kit.sessions.requireSessionByToken(sessionToken);
+			const session =
+				await context.kit.sessions.requireSessionByToken(sessionToken);
 			await context.kit.sessions.revokeSession(session.id);
 			await context.kit.config.hooks.onLogout?.(session.userId, session.id);
 			context.clearSessionCookies(res);
 			res.json({ success: true });
-		} catch (error) {
-			next(error);
-		}
-	});
+		}),
+	);
 }

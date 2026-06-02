@@ -4,16 +4,18 @@ import {
 	loginWithPassword,
 	registerWithPassword,
 } from "../../email/passwordLogin.js";
-import { getClientIp, getUserAgent, parseFormBody } from "../helpers.js";
-import type { AuthRouterContext } from "../routerContext.js";
 import { parseDeviceContext } from "../../types.js";
+import { getClientIp, getUserAgent, parseFormBody } from "../helpers.js";
+import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
+import type { AuthRouterContext } from "../routerContext.js";
 
 export function registerEmailRoutes(
 	router: Router,
 	context: AuthRouterContext,
 ): void {
-	router.post("/email/password/register", async (req, res, next) => {
-		try {
+	router.post(
+		"/email/password/register",
+		asyncRouteHandler(async (req, res) => {
 			const body = req.body as Record<string, unknown>;
 			const email = body.email;
 			const password = body.password;
@@ -28,13 +30,12 @@ export function registerEmailRoutes(
 					typeof body.display_name === "string" ? body.display_name : undefined,
 			});
 			res.status(201).json({ user_id: result.userId });
-		} catch (error) {
-			next(error);
-		}
-	});
+		}),
+	);
 
-	router.post("/email/password/login", async (req, res, next) => {
-		try {
+	router.post(
+		"/email/password/login",
+		asyncRouteHandler(async (req, res) => {
 			const body = {
 				...parseFormBody(req.body),
 				...(req.body as object),
@@ -69,13 +70,12 @@ export function registerEmailRoutes(
 				return;
 			}
 			res.json({ success: true, user_id: result.userId });
-		} catch (error) {
-			next(error);
-		}
-	});
+		}),
+	);
 
-	router.post("/email/magic/start", async (req, res, next) => {
-		try {
+	router.post(
+		"/email/magic/start",
+		asyncRouteHandler(async (req, res) => {
 			const body = req.body as Record<string, unknown>;
 			const email = body.email;
 			if (typeof email !== "string") {
@@ -97,13 +97,12 @@ export function registerEmailRoutes(
 					body.code_challenge_method === "S256" ? "S256" : undefined,
 			});
 			res.json({ success: true });
-		} catch (error) {
-			next(error);
-		}
-	});
+		}),
+	);
 
-	router.get("/email/magic/callback", async (req, res, next) => {
-		try {
+	router.get(
+		"/email/magic/callback",
+		asyncRouteHandler(async (req, res) => {
 			const token = req.query.token;
 			if (typeof token !== "string") {
 				res.status(400).json({ error: "invalid_request" });
@@ -116,8 +115,6 @@ export function registerEmailRoutes(
 			});
 			context.setSessionCookie(res, result.sessionToken, result.csrfToken);
 			res.redirect(result.redirectUrl);
-		} catch (error) {
-			next(error);
-		}
-	});
+		}),
+	);
 }
