@@ -143,6 +143,7 @@ export class TokenService {
        WHERE active = true AND retired_at IS NULL
        ORDER BY created_at DESC`,
 		);
+
 		return { keys: rows.map((r) => r.public_jwk) };
 	}
 
@@ -381,7 +382,8 @@ export class TokenService {
          FROM auth.refresh_tokens rt
          JOIN auth.sessions s ON s.id = rt.session_id
          LEFT JOIN auth.devices d ON d.id = s.device_id
-         WHERE rt.token_hash = $1 FOR UPDATE`,
+         WHERE rt.token_hash = $1
+         FOR UPDATE OF rt`,
 				[tokenHash],
 			);
 
