@@ -183,12 +183,15 @@ export class SessionService {
        WHERE rt.token_hash = $1`,
 			[hashToken(refreshToken)],
 		);
+
 		if (!rows[0]) {
 			return null;
 		}
+
 		const sessionId = Number(rows[0].session_id);
 		const userId = Number(rows[0].user_id);
 		await this.revokeSession(sessionId);
+
 		return { sessionId, userId };
 	}
 

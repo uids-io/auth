@@ -23,9 +23,11 @@ function getCookies(req: Request): Record<string, string> {
 
 function getSessionToken(req: Request, kit: AuthKit): string | undefined {
 	const cookie = getCookies(req)[kit.config.cookie.name];
+
 	if (typeof cookie === "string") {
 		return kit.sessions.verifySessionCookie(cookie) ?? undefined;
 	}
+
 	return undefined;
 }
 
@@ -34,17 +36,21 @@ async function getBearerUserId(
 	kit: AuthKit,
 ): Promise<number | null> {
 	const authHeader = req.headers.authorization;
+
 	if (!authHeader?.startsWith("Bearer ")) {
 		return null;
 	}
+
 	try {
 		const { verifyAccessToken } = await import("../services/tokenService.js");
+
 		const claims = await verifyAccessToken({
 			token: authHeader.slice(7),
 			issuer: kit.config.issuer,
 			audience: kit.config.apiAudience,
 			localJwks: (await kit.tokens.getPublicJwks()).keys,
 		});
+
 		return Number(claims.sub);
 	} catch {
 		return null;
@@ -56,12 +62,15 @@ async function resolveAuthenticatedUserId(
 	kit: AuthKit,
 ): Promise<number | null> {
 	const sessionToken = getSessionToken(req, kit);
+
 	if (sessionToken) {
 		const session = await kit.sessions.getSessionByToken(sessionToken);
+
 		if (session) {
 			return session.userId;
 		}
 	}
+
 	return getBearerUserId(req, kit);
 }
 
@@ -77,11 +86,13 @@ export function createAuthRouterContext(kit: AuthKit): AuthRouterContext {
 			maxAgeSeconds?: number,
 		): void => {
 			const signed = kit.sessions.signSessionCookie(sessionToken);
+
 			res.cookie(
 				kit.config.cookie.name,
 				signed,
 				kit.sessions.getCookieOptions(maxAgeSeconds),
 			);
+
 			res.cookie("uids_csrf", csrfToken, {
 				...kit.sessions.getCookieOptions(maxAgeSeconds),
 				httpOnly: false,

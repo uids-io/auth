@@ -22,19 +22,15 @@ export function registerOidcRoutes(
 		}),
 	);
 
-	router.get(
-		"/login",
-		validateQuery(loginQuerySchema),
-		(req, res) => {
-			res.type("html").send(
-				renderLoginPage({
-					issuer: context.kit.config.issuer.replace(/\/$/, ""),
-					state: req.query.state as string | undefined,
-					googleEnabled: !!context.kit.config.providers.google,
-					microsoftEnabled: !!context.kit.config.providers.microsoft,
-					emailEnabled: true,
-				}),
-			);
-		},
-	);
+	router.get("/login", validateQuery(loginQuerySchema), (req, res) => {
+		res.type("html").send(
+			renderLoginPage({
+				issuer: context.kit.config.issuer.replace(/\/$/, ""),
+				state: req.query.state as string | undefined,
+				googleEnabled: !!context.kit.config.providers.google,
+				microsoftEnabled: !!context.kit.config.providers.microsoft,
+				emailEnabled: true,
+			}),
+		);
+	});
 }

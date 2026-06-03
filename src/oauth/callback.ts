@@ -33,6 +33,7 @@ export async function startSocialLogin(
 				"provider_not_configured",
 			);
 		}
+
 		return buildGoogleAuthUrl({
 			clientId: google.clientId,
 			redirectUri: google.callbackUrl,
@@ -47,6 +48,7 @@ export async function startSocialLogin(
 			"provider_not_configured",
 		);
 	}
+
 	return buildMicrosoftAuthUrl({
 		tenant: microsoft.tenant,
 		clientId: microsoft.clientId,

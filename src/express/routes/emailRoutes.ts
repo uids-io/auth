@@ -7,7 +7,10 @@ import {
 import { parseDeviceContext } from "../../types.js";
 import { getClientIp, getUserAgent, parseFormBody } from "../helpers.js";
 import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
-import { validateBody, validateQuery } from "../middleware/validationMiddleware.js";
+import {
+	validateBody,
+	validateQuery,
+} from "../middleware/validationMiddleware.js";
 import type { AuthRouterContext } from "../routerContext.js";
 import {
 	magicCallbackQuerySchema,
@@ -25,12 +28,14 @@ export function registerEmailRoutes(
 		validateBody(passwordRegisterBodySchema),
 		asyncRouteHandler(async (req, res) => {
 			const body = req.body as Record<string, unknown>;
+
 			const result = await registerWithPassword(context.kit, {
 				email: body.email as string,
 				password: body.password as string,
 				displayName:
 					typeof body.display_name === "string" ? body.display_name : undefined,
 			});
+
 			res.status(201).json({ user_id: result.userId });
 		}),
 	);
@@ -111,7 +116,7 @@ export function registerEmailRoutes(
 			});
 
 			context.setSessionCookie(res, result.sessionToken, result.csrfToken);
-      
+
 			res.redirect(result.redirectUrl);
 		}),
 	);

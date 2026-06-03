@@ -41,7 +41,7 @@ export function registerSessionRoutes(
 			await context.kit.sessions.revokeSession(session.id);
 			await context.kit.config.hooks.onLogout?.(session.userId, session.id);
 			context.clearSessionCookies(res);
-      
+
 			res.json({ success: true });
 		}),
 	);
