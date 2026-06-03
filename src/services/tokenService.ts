@@ -383,7 +383,7 @@ export class TokenService {
          JOIN auth.sessions s ON s.id = rt.session_id
          LEFT JOIN auth.devices d ON d.id = s.device_id
          WHERE rt.token_hash = $1
-         FOR UPDATE OF rt`,
+         FOR UPDATE`,
 				[tokenHash],
 			);
 
