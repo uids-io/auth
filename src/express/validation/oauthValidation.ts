@@ -36,12 +36,23 @@ export const tokenBodySchema = z.object({
 	code_verifier: z.string(),
 });
 
+const refreshTokenFieldSchema = z.string().min(1);
+
 export const refreshBodySchema = z.object({
-	refresh_token: z.string(),
+	refresh_token: refreshTokenFieldSchema,
+});
+
+/** Logout via refresh token in body — CSRF bypass; same shape as logoutBodySchema when token is sent. */
+export const refreshTokenLogoutBodySchema = z.object({
+	refresh_token: refreshTokenFieldSchema,
 });
 
 export const logoutBodySchema = z
 	.object({
-		refresh_token: z.string().optional(),
+		refresh_token: refreshTokenFieldSchema.optional(),
 	})
 	.passthrough();
+
+export function isRefreshTokenLogoutRequest(body: unknown): boolean {
+	return refreshTokenLogoutBodySchema.safeParse(body).success;
+}

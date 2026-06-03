@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import type { AuthKit } from "../../config.js";
 import { parseCookies } from "../helpers.js";
+import { isRefreshTokenLogoutRequest } from "../validation/oauthValidation.js";
 
 function validateCsrf(req: Request): boolean {
 	const cookies = req.cookies ?? parseCookies(req.headers.cookie);
@@ -17,6 +18,12 @@ function validateCsrf(req: Request): boolean {
 export function createCsrfMiddleware(kit: AuthKit) {
 	return (req: Request, res: Response, next: NextFunction): void => {
 		if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+			next();
+			return;
+		}
+
+		// Refresh token in body proves intent; CSRF not required (see refreshTokenLogoutBodySchema).
+		if (req.path === "/logout" && isRefreshTokenLogoutRequest(req.body)) {
 			next();
 			return;
 		}
