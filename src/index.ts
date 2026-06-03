@@ -12,8 +12,11 @@ export {
 	ForbiddenError,
 	InvalidRequestError,
 	isAuthError,
+	isValidationError,
 	RateLimitError,
 	UnauthorizedError,
+	type ValidationDetail,
+	ValidationError,
 } from "./errors.js";
 export { createAuthRouter } from "./express/createAuthRouter.js";
 export { type RequireAuthConfig, requireAuth } from "./express/requireAuth.js";

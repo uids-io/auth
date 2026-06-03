@@ -1,25 +1,27 @@
 import type { RequestHandler } from "express";
-import type { ZodTypeAny } from "zod";
-import { InvalidRequestError } from "../../errors.js";
+import { ZodError, type ZodIssue, type ZodTypeAny } from "zod";
+import { logger } from "../../config/logger.js";
+import { type ValidationDetail, ValidationError } from "../../errors.js";
 
-function formatValidationErrorMessage(
+function formatFieldPath(
 	scope: "body" | "query" | "params",
-	error: unknown,
+	path: PropertyKey[],
 ): string {
-	if (
-		error &&
-		typeof error === "object" &&
-		"issues" in error &&
-		Array.isArray((error as { issues?: unknown[] }).issues)
-	) {
-		const firstIssue = (error as { issues: Array<{ message?: string }> }).issues[0];
-
-		if (firstIssue?.message) {
-			return `Invalid ${scope}: ${firstIssue.message}`;
-		}
+	if (path.length === 0) {
+		return scope;
 	}
 
-	return `Invalid ${scope}`;
+	return path.map(String).join(".");
+}
+
+function mapZodIssues(
+	scope: "body" | "query" | "params",
+	issues: ZodIssue[],
+): ValidationDetail[] {
+	return issues.map((issue) => ({
+		field: formatFieldPath(scope, issue.path),
+		message: issue.message,
+	}));
 }
 
 function createValidator(
@@ -29,22 +31,34 @@ function createValidator(
 	return (req, _res, next): void => {
 		try {
 			const input =
-				scope === "body" ? req.body : scope === "query" ? req.query : req.params;
-			const parsed = schema.parse(input);
+				scope === "body"
+					? req.body
+					: scope === "query"
+						? req.query
+						: req.params;
 
-			if (scope === "body") {
-				req.body = parsed;
-			} else if (scope === "query") {
-				req.query = parsed;
-			} else {
-				req.params = parsed;
-			}
-      
+			schema.parse(input);
+
 			next();
 		} catch (error) {
-			next(
-				new InvalidRequestError(formatValidationErrorMessage(scope, error)),
-			);
+			if (error instanceof ZodError) {
+				const details = mapZodIssues(scope, error.issues);
+				logger.warn(
+					{
+						validationScope: scope,
+						issueCount: details.length,
+						fields: details.map((d) => d.field),
+					},
+					"Request validation failed",
+				);
+
+				next(
+					new ValidationError("Validation failed", details, "VALIDATION_ERROR"),
+				);
+
+				return;
+			}
+			next(error);
 		}
 	};
 }

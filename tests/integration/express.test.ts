@@ -165,9 +165,57 @@ describe('integration express', () => {
         /invalid|revoked|reuse/i,
       );
     });
+
+    it('allows logout by refresh token even when session cookies are sent without CSRF', async () => {
+      const user = await kit.users.createUser({
+        email: 'logout-refresh-cookies@test.com',
+        emailVerified: true,
+      });
+      const { session, sessionToken, csrfToken } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+      const tokens = await kit.tokens.issueTokens({
+        user,
+        clientId: 'merchant_portal_web',
+        scopes: ['openid'],
+        sessionId: session.id,
+      });
+      const refreshToken = tokens.refresh_token;
+      expect(refreshToken).toBeDefined();
+      if (!refreshToken) {
+        throw new Error('Expected refresh token to be present');
+      }
+
+      const signed = kit.sessions.signSessionCookie(sessionToken);
+
+      const res = await request(authApp)
+        .post('/logout')
+        .set('Cookie', [
+          `${kit.config.cookie.name}=${signed}`,
+          `uids_csrf=${csrfToken}`,
+        ])
+        .send({ refresh_token: refreshToken });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true });
+    });
   });
 
   describe('device validation', () => {
+    it('returns all validation issues for invalid body', async () => {
+      const res = await request(authApp).post('/devices/register').send({
+        platform: 'playstation',
+      });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.details.length).toBeGreaterThanOrEqual(2);
+      const fields = res.body.error.details.map(
+        (d: { field: string }) => d.field,
+      );
+      expect(fields).toEqual(expect.arrayContaining(['client_id', 'device_id']));
+    });
+
     it('rejects unsupported device platform', async () => {
       const res = await request(authApp).post('/devices/register').send({
         client_id: 'merchant_portal_web',
@@ -175,9 +223,18 @@ describe('integration express', () => {
         platform: 'playstation',
       });
 
-      expect(res.status).toBe(400);
-      expect(res.body.error).toBe('invalid_request');
-      expect(res.body.error_description).toMatch(/Invalid body:/);
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Validation failed');
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            field: 'platform',
+            message: expect.any(String),
+          }),
+        ]),
+      );
     });
   });
 });

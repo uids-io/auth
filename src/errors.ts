@@ -10,10 +10,29 @@ export class AuthError extends Error {
 	}
 }
 
+export interface ValidationDetail {
+	field: string;
+	message: string;
+}
+
 export class InvalidRequestError extends AuthError {
 	constructor(message: string, code = "invalid_request") {
 		super(message, code, 400);
 		this.name = "InvalidRequestError";
+	}
+}
+
+export class ValidationError extends AuthError {
+	readonly details: ValidationDetail[];
+
+	constructor(
+		message: string,
+		details: ValidationDetail[],
+		code = "VALIDATION_ERROR",
+	) {
+		super(message, code, 422);
+		this.name = "ValidationError";
+		this.details = details;
 	}
 }
 
@@ -57,4 +76,8 @@ export class InternalServerError extends AuthError {
 
 export function isAuthError(error: unknown): error is AuthError {
 	return error instanceof AuthError;
+}
+
+export function isValidationError(error: unknown): error is ValidationError {
+	return error instanceof ValidationError;
 }
