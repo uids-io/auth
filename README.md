@@ -1,14 +1,42 @@
-# @uids-io/auth
+# @advcomm/uids-io-auth
 
-Production-ready authentication for Node.js backends: OAuth 2.0/OIDC, sessions, refresh tokens, SDK-registered device tracking, and Express integration.
+Production-ready authentication for Node.js backends: OAuth 2.0/OIDC, sessions, refresh tokens, SDK-registered device tracking, and an optional Express adapter.
+
+The package is **not Express-only** — services (`AuthService`, `TokenService`, etc.) are framework-agnostic. Use `createAuthRouter` when you want a ready-made HTTP surface on Express.
 
 ## Installation
 
 ```bash
-npm install @uids-io/auth pg express
+npm install @advcomm/uids-io-auth pg express
 ```
 
-Peer dependencies: `pg`, `express` (optional for non-HTTP usage).
+| Dependency | Role |
+|------------|------|
+| `pg` | Required — PostgreSQL access |
+| `express` | Optional peer — only needed for `createAuthRouter` / `requireAuth` |
+
+Subpath export (if you split Express-only imports):
+
+```typescript
+import { createAuthRouter } from '@advcomm/uids-io-auth/express';
+```
+
+## Environment variables
+
+Use these in your auth server (see [`examples/express-auth-server/.env.example`](examples/express-auth-server/.env.example)):
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `ISSUER` | Yes | Public auth issuer URL (e.g. `https://auth.example.com`) |
+| `API_AUDIENCE` | Yes | Resource server audience for access tokens |
+| `CSRF_SECRET` | Yes (prod) | Secret for signing CSRF/session cookies — **must** be set explicitly in production (no fallback) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | If using Google | OAuth client credentials |
+| `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` | If using Microsoft | Entra app credentials |
+| `MICROSOFT_TENANT` | No | Default `common` |
+| `LOG_LEVEL` | No | Pino level: `debug`, `info`, `warn`, `error` (default: `debug` in dev, `info` in production) |
+
+Portal redirect URIs are passed to `seedDefaultPortalClients`, not env vars, in the example apps.
 
 ## Database migrations
 
@@ -16,7 +44,7 @@ Migrations are **not** run automatically. Call explicitly on startup:
 
 ```typescript
 import { Pool } from 'pg';
-import { runAuthMigrations } from '@uids-io/auth';
+import { runAuthMigrations } from '@advcomm/uids-io-auth';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 await runAuthMigrations(pool);
@@ -26,7 +54,13 @@ await runAuthMigrations(pool);
 
 ```typescript
 import express from 'express';
-import { createAuthKit, createAuthRouter, runAuthMigrations, seedDefaultPortalClients } from '@uids-io/auth';
+import { Pool } from 'pg';
+import {
+  createAuthKit,
+  createAuthRouter,
+  runAuthMigrations,
+  seedDefaultPortalClients,
+} from '@advcomm/uids-io-auth';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 await runAuthMigrations(pool);
@@ -39,8 +73,8 @@ await seedDefaultPortalClients(pool, {
 });
 
 const authKit = await createAuthKit({
-  issuer: 'https://auth.example.com',
-  apiAudience: 'https://api.example.com',
+  issuer: process.env.ISSUER!,
+  apiAudience: process.env.API_AUDIENCE!,
   pg: pool,
   cookie: {
     name: 'uids_auth_session',
@@ -53,19 +87,18 @@ const authKit = await createAuthKit({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      callbackUrl: 'https://auth.example.com/oauth/google/callback',
+      callbackUrl: `${process.env.ISSUER}/oauth/google/callback`,
     },
     microsoft: {
       clientId: process.env.MICROSOFT_CLIENT_ID!,
       clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
-      tenant: 'common',
-      callbackUrl: 'https://auth.example.com/oauth/microsoft/callback',
+      tenant: process.env.MICROSOFT_TENANT ?? 'common',
+      callbackUrl: `${process.env.ISSUER}/oauth/microsoft/callback`,
     },
   },
   email: {
     sendMagicLink: async (email, url) => {
       // integrate with your email provider
-      console.log('Magic link for', email, url);
     },
   },
 });
@@ -77,21 +110,30 @@ app.use('/', createAuthRouter(authKit));
 app.listen(3000);
 ```
 
+`createAuthRouter` mounts:
+
+- **OIDC** — `/.well-known/openid-configuration`, `/.well-known/jwks.json`, `/login`
+- **OAuth** — `/authorize`, `/token`, provider callbacks, `/logout`
+- **Email** — magic link and password login routes
+- **Sessions** — session cookie introspection and revoke
+- **Devices** — register, list, revoke (CSRF-protected where required)
+- **Middleware** — CORS, CSRF on state-changing routes, Zod validation, centralized error handling
+
 See [`examples/express-auth-server`](examples/express-auth-server).
 
 ## API server (api.example.com)
 
 ```typescript
 import express from 'express';
-import { requireAuth } from '@uids-io/auth';
+import { requireAuth } from '@advcomm/uids-io-auth';
 
 const app = express();
 app.use(express.json());
 
 app.use(requireAuth({
-  issuer: 'https://auth.example.com',
-  audience: 'https://api.example.com',
-  jwksUrl: 'https://auth.example.com/.well-known/jwks.json',
+  issuer: process.env.ISSUER!,
+  audience: process.env.API_AUDIENCE!,
+  jwksUrl: `${process.env.ISSUER}/.well-known/jwks.json`,
 }));
 
 app.get('/me', (req, res) => {
@@ -102,6 +144,61 @@ app.get('/me', (req, res) => {
 Configure CORS on the API to allow your portal origins. This package does not set API CORS headers.
 
 See [`examples/express-api-server`](examples/express-api-server).
+
+## Errors and logging
+
+The Express adapter uses two response shapes so OAuth clients and REST portals both get usable errors.
+
+### Validation errors (Zod, HTTP 422)
+
+Routes validated with the built-in middleware return **all** field issues:
+
+```json
+{
+  "success": false,
+  "message": "Validation failed",
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "details": [
+      { "field": "client_id", "message": "Required" },
+      { "field": "platform", "message": "Invalid enum value..." }
+    ]
+  }
+}
+```
+
+Use `ValidationError`, `isValidationError`, and `ValidationDetail` from the package if you handle errors in custom middleware.
+
+### OAuth / auth errors (HTTP 4xx)
+
+Business and OAuth-style failures use the familiar shape:
+
+```json
+{
+  "error": "invalid_request",
+  "error_description": "Invalid refresh token"
+}
+```
+
+Other exported errors: `UnauthorizedError`, `ForbiddenError`, `ConflictError`, `RateLimitError`, `InvalidRequestError`, and base `AuthError`.
+
+### Server errors (HTTP 500)
+
+Unexpected errors return a generic body (no stack or internal details). Full error context is logged server-side only.
+
+### Structured logs (Pino)
+
+The router logs via **Pino** to stdout:
+
+| Situation | Level | What is logged |
+|-----------|-------|----------------|
+| Request validation failed | `warn` | scope, field names, issue count (not request body values) |
+| Expected auth errors | `info` | error code, status, method, path |
+| Unexpected errors | `error` | error name/message, method, path |
+
+Set `LOG_LEVEL=debug` locally. In production, logs are JSON (no pretty-print).
+
+**Tracing:** pass `X-Request-Id` from your gateway or API; it is included in log context when present.
 
 ## Google Cloud OAuth setup
 
@@ -143,6 +240,8 @@ Seeded clients: `merchant_portal_web`, `agency_portal_web`, `influencer_portal_w
 
 Companion client SDKs (React, Flutter, native) generate a stable UUID `device_id`, register it via `POST /devices/register`, and send `X-Uids-Device-Id` on auth flows. The auth server binds devices to users and includes `device_id` in access token claims.
 
+Supported platforms: `web`, `ios`, `android`, `desktop`, `unknown` (validated on register).
+
 See [docs/sdk-contract.md](docs/sdk-contract.md) for the full SDK contract.
 
 ### Recommended companion SDKs (future packages)
@@ -156,10 +255,24 @@ See [docs/sdk-contract.md](docs/sdk-contract.md) for the full SDK contract.
 
 ## Exports
 
+**Kit & HTTP**
+
 - `createAuthKit`, `createAuthRouter`, `requireAuth`
-- `verifyAccessToken`, `runAuthMigrations`, `seedDefaultPortalClients`
-- `AuthService`, `UserService`, `TokenService`, `DeviceService`
-- Types, errors, PKCE helpers, provider profile mappers
+- `runAuthMigrations`, `seedDefaultPortalClients`
+- `verifyAccessToken`, `generatePkcePair`, `verifyCodeChallenge`
+
+**Services** (use directly without Express)
+
+- `AuthService`, `UserService`, `TokenService`, `SessionService`, `DeviceService`, `OAuthClientService`
+
+**Errors**
+
+- `AuthError`, `InvalidRequestError`, `ValidationError`, `UnauthorizedError`, `ForbiddenError`, `ConflictError`, `RateLimitError`
+- `isAuthError`, `isValidationError`, `ValidationDetail`
+
+**Types & helpers**
+
+- `AuthUser`, `AuthContext`, `Device`, `DevicePlatform`, `TokenResponse`, provider mappers, etc.
 
 ## Testing
 
@@ -167,6 +280,8 @@ See [docs/sdk-contract.md](docs/sdk-contract.md) for the full SDK contract.
 npm test              # all tests
 npm run test:unit     # crypto, redirect_uri, provider mapping
 npm run test:integration  # DB + Express flows (uses pg-mem by default)
+npm run typecheck
+npm run build
 ```
 
 Integration tests use **pg-mem** by default (no Docker required). Optional backends:
