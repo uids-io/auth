@@ -1,0 +1,23 @@
+info:
+  name: Google Start
+  type: http
+  seq: 1
+  tags:
+    - browser
+
+http:
+  method: GET
+  url: "{{authBaseUrl}}/oauth/google/start"
+  params:
+    - name: state
+      value: "{{pendingState}}"
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  followRedirects: false
+
+docs: |-
+  Redirects to Google OAuth. `state` optional pending auth context from `/authorize`.

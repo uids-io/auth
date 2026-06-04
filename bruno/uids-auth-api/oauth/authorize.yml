@@ -1,0 +1,49 @@
+info:
+  name: Authorize (PKCE)
+  type: http
+  seq: 1
+  tags:
+    - browser
+
+http:
+  method: GET
+  url: "{{authBaseUrl}}/authorize"
+  params:
+    - name: response_type
+      value: code
+      type: query
+    - name: client_id
+      value: "{{clientId}}"
+      type: query
+    - name: redirect_uri
+      value: "{{redirectUri}}"
+      type: query
+    - name: scope
+      value: openid profile email
+      type: query
+    - name: state
+      value: portal-state-123
+      type: query
+    - name: code_challenge
+      value: "{{codeChallenge}}"
+      type: query
+    - name: code_challenge_method
+      value: S256
+      type: query
+    - name: device_id
+      value: "{{deviceId}}"
+      type: query
+      disabled: true
+    - name: platform
+      value: web
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  followRedirects: false
+
+docs: |-
+  Starts OAuth authorization code flow. Open in browser after setting `codeVerifier` / `codeChallenge` (S256).
+  On success, user lands on `redirectUri` with `?code=` — copy into `authorizationCode` for **Exchange authorization code**.

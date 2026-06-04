@@ -1,0 +1,7 @@
+info:
+  name: Devices
+  type: folder
+  seq: 3
+
+docs: |-
+  SDK device registration and management. See docs/sdk-contract.md.

@@ -1,0 +1,25 @@
+info:
+  name: Logout (session cookie + CSRF)
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/logout"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-CSRF-Token
+      value: "{{csrfToken}}"
+  body:
+    type: json
+    data: "{}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Cookie-based logout on auth domain. Requires session cookie `uids_auth_session` and matching `uids_csrf` cookie + `X-CSRF-Token` header.
+
+  Obtain CSRF from login response (`Set-Cookie: uids_csrf`).

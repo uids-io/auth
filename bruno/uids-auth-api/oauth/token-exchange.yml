@@ -1,0 +1,44 @@
+info:
+  name: Exchange Authorization Code
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/token"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Uids-Device-Id
+      value: "{{deviceId}}"
+      disabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "grant_type": "authorization_code",
+        "code": "{{authorizationCode}}",
+        "client_id": "{{clientId}}",
+        "redirect_uri": "{{redirectUri}}",
+        "code_verifier": "{{codeVerifier}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body && res.body.access_token) {
+          bru.setEnvVar("accessToken", res.body.access_token);
+        }
+        if (res.body && res.body.refresh_token) {
+          bru.setEnvVar("refreshToken", res.body.refresh_token);
+        }
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Exchanges authorization code for tokens. Requires PKCE `code_verifier` matching authorize step.
+
+  Optional header `X-Uids-Token-Delivery: cookie` stores refresh token in HttpOnly `uids_refresh_token` and omits it from JSON body.

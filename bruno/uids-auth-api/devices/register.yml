@@ -1,0 +1,31 @@
+info:
+  name: Register Device
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/devices/register"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Uids-Device-Id
+      value: "{{deviceId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "client_id": "{{clientId}}",
+        "device_id": "{{deviceId}}",
+        "platform": "web",
+        "app_version": "1.0.0"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Register stable device UUID before or during login. Platforms: web, ios, android, desktop, unknown.
+
+  Validation errors return HTTP 422 with `error.details[]`.

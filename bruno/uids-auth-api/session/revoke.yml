@@ -1,0 +1,18 @@
+info:
+  name: Revoke Session
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/session/revoke"
+  headers:
+    - name: X-CSRF-Token
+      value: "{{csrfToken}}"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Revokes current session. Requires session cookie + CSRF header matching `uids_csrf` cookie.

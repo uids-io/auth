@@ -1,0 +1,37 @@
+info:
+  name: Refresh Tokens
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/refresh"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "refresh_token": "{{refreshToken}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body && res.body.access_token) {
+          bru.setEnvVar("accessToken", res.body.access_token);
+        }
+        if (res.body && res.body.refresh_token) {
+          bru.setEnvVar("refreshToken", res.body.refresh_token);
+        }
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Rotates refresh token. Accepts `refresh_token` in JSON body or `uids_refresh_token` cookie.
+
+  Reuse of revoked/rotated token returns `invalid_grant` and revokes session chain.

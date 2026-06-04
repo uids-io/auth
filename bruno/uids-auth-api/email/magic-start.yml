@@ -1,0 +1,29 @@
+info:
+  name: Magic Link Start
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/email/magic/start"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "email": "user@example.com",
+        "client_id": "{{clientId}}",
+        "redirect_uri": "{{redirectUri}}",
+        "state": "portal-state-123",
+        "code_challenge": "{{codeChallenge}}",
+        "code_challenge_method": "S256"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Sends magic link email (via configured `sendMagicLink` hook on server).

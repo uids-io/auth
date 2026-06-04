@@ -1,0 +1,23 @@
+info:
+  name: Microsoft Start
+  type: http
+  seq: 2
+  tags:
+    - browser
+
+http:
+  method: GET
+  url: "{{authBaseUrl}}/oauth/microsoft/start"
+  params:
+    - name: state
+      value: "{{pendingState}}"
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  followRedirects: false
+
+docs: |-
+  Redirects to Microsoft Entra OAuth.

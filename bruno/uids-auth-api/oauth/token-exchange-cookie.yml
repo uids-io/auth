@@ -1,0 +1,41 @@
+info:
+  name: Exchange Code (refresh in cookie)
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/token"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Uids-Token-Delivery
+      value: cookie
+    - name: X-Uids-Device-Id
+      value: "{{deviceId}}"
+      disabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "grant_type": "authorization_code",
+        "code": "{{authorizationCode}}",
+        "client_id": "{{clientId}}",
+        "redirect_uri": "{{redirectUri}}",
+        "code_verifier": "{{codeVerifier}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body && res.body.access_token) {
+          bru.setEnvVar("accessToken", res.body.access_token);
+        }
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Web SDK mode: refresh token returned as HttpOnly cookie `uids_refresh_token`, stripped from JSON response.

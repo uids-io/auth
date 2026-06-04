@@ -1,0 +1,26 @@
+info:
+  name: Logout (refresh token body)
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/logout"
+  headers:
+    - name: Content-Type
+      value: application/json
+  body:
+    type: json
+    data: |-
+      {
+        "refresh_token": "{{refreshToken}}"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  SPA logout: send refresh token in body. CSRF not required for this path.
+
+  Clears session cookies if present and `uids_refresh_token` cookie.

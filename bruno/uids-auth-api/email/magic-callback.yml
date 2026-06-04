@@ -1,0 +1,22 @@
+info:
+  name: Magic Link Callback
+  type: http
+  seq: 4
+  tags:
+    - browser
+
+http:
+  method: GET
+  url: "{{authBaseUrl}}/email/magic/callback"
+  params:
+    - name: token
+      value: magic-link-token-from-email
+      type: query
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  followRedirects: false
+
+docs: |-
+  Consumes magic link token. Sets session cookies and redirects to portal with authorization code.

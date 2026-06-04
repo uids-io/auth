@@ -1,0 +1,7 @@
+info:
+  name: Social OAuth
+  type: folder
+  seq: 6
+
+docs: |-
+  Google and Microsoft login redirects. Open in browser; requires provider credentials on auth server.

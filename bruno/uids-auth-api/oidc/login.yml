@@ -1,0 +1,23 @@
+info:
+  name: Login Page
+  type: http
+  seq: 3
+  tags:
+    - browser
+
+http:
+  method: GET
+  url: "{{authBaseUrl}}/login"
+  params:
+    - name: state
+      value: "{{pendingState}}"
+      type: query
+      disabled: true
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  followRedirects: false
+
+docs: |-
+  Hosted HTML login (email, Google, Microsoft). Use in browser; `state` is pending OAuth context from `/authorize`.

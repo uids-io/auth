@@ -1,0 +1,30 @@
+opencollection: "1.0.0"
+info:
+  name: UIDs Auth Server
+  summary: HTTP API for @advcomm/uids-io-auth (createAuthRouter). Import alongside backend service collections.
+  version: "1.0.0"
+
+config:
+  request:
+    headers:
+      - name: Accept
+        value: application/json
+
+docs: |-
+  # UIDs Auth Server API
+
+  Implements the HTTP surface from `createAuthRouter` in `@advcomm/uids-io-auth`.
+
+  **Extend backend docs:** Import this folder as a separate Bruno collection, or copy `bruno/uids-auth-api` into your monorepo `bruno/collections/` tree.
+
+  See `bruno/README.md` for merge steps and `docs/sdk-contract.md` for client SDK contract.
+
+  ## Auth flows
+
+  1. `POST /devices/register` (optional, recommended)
+  2. `GET /authorize` with PKCE → browser login
+  3. `POST /token` with `code` + `code_verifier`
+  4. `POST /refresh` with refresh token (body or `uids_refresh_token` cookie)
+  5. API calls with `Authorization: Bearer {{accessToken}}`
+
+  Set `codeVerifier` / `codeChallenge` before authorize (S256). After callback, set `authorizationCode` from `?code=`.
