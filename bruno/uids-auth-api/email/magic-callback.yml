@@ -14,9 +14,44 @@ http:
       type: query
   auth: inherit
 
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const getHeader = (res, name) => {
+          const lower = name.toLowerCase();
+          if (Array.isArray(res.headers)) {
+            const h = res.headers.find(
+              (x) => String(x.name || "").toLowerCase() === lower,
+            );
+            return h?.value;
+          }
+          return res.headers?.[name];
+        };
+        const setCookie = getHeader(res, "set-cookie");
+        if (setCookie) {
+          const lines = Array.isArray(setCookie) ? setCookie : [setCookie];
+          for (const line of lines) {
+            const csrf = String(line).match(/uids_csrf=([^;]+)/);
+            if (csrf?.[1]) bru.setEnvVar("csrfToken", csrf[1]);
+          }
+        }
+        const location = getHeader(res, "location");
+        if (location) {
+          try {
+            const u = new URL(location);
+            const code = u.searchParams.get("code");
+            const state = u.searchParams.get("state");
+            if (code) bru.setEnvVar("authorizationCode", code);
+            if (state) bru.setEnvVar("oauthState", state);
+          } catch (e) {
+            console.log("magic callback redirect parse skipped", e?.message);
+          }
+        }
+
 settings:
   encodeUrl: true
   followRedirects: false
 
 docs: |-
-  Consumes magic link token. Sets session cookies and redirects to portal with authorization code.
+  After magic link click: sets `authorizationCode`, `oauthState`, `csrfToken` from redirect/cookies.

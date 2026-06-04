@@ -7,7 +7,7 @@ info:
 
 http:
   method: GET
-  url: "{{authBaseUrl}}/authorize"
+  url: "{{authBaseUrl}}/authorize?response_type=code&client_id={{clientId}}&redirect_uri={{redirectUri}}&scope=openid profile email&state={{oauthState}}&code_challenge={{codeChallenge}}&code_challenge_method=S256"
   params:
     - name: response_type
       value: code
@@ -22,7 +22,7 @@ http:
       value: openid profile email
       type: query
     - name: state
-      value: portal-state-123
+      value: "{{oauthState}}"
       type: query
     - name: code_challenge
       value: "{{codeChallenge}}"
@@ -38,12 +38,72 @@ http:
       value: web
       type: query
       disabled: true
+    - name: login_provider
+      value: google
+      type: query
+      disabled: true
   auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const existing = bru.getEnvVar("codeVerifier");
+
+        if (!existing || String(existing).length === 0) {
+          const crypto = require("node:crypto");
+          const verifier = crypto.randomBytes(32).toString("base64url");
+          const challenge = crypto
+            .createHash("sha256")
+            .update(verifier)
+            .digest("base64url");
+          
+          bru.setEnvVar("codeVerifier", verifier);
+          bru.setEnvVar("codeChallenge", challenge);
+        }
+    - type: after-response
+      code: |-
+        const getHeader = (res, name) => {
+          const lower = name.toLowerCase();
+          if (Array.isArray(res.headers)) {
+            const h = res.headers.find(
+              (x) => String(x.name || "").toLowerCase() === lower,
+            );
+            return h?.value;
+          }
+          return res.headers?.[name];
+        };
+
+        const location = getHeader(res, "location");
+        if (!location) return;
+
+        try {
+          const base = bru.getEnvVar("authBaseUrl") || "http://localhost:3000";
+          const u = new URL(location, base);
+          const code = u.searchParams.get("code");
+          const state = u.searchParams.get("state");
+          
+          if (code) bru.setEnvVar("authorizationCode", code);
+          
+          if (state) {
+            if (u.pathname.endsWith("/login")) {
+              bru.setEnvVar("pendingState", state);
+            } else {
+              bru.setEnvVar("oauthState", state);
+            }
+          }
+        } catch (e) {
+          console.log("authorize redirect parse skipped", e?.message);
+        }
 
 settings:
   encodeUrl: true
+  timeout: 0
   followRedirects: false
+  maxRedirects: 5
 
 docs: |-
-  Starts OAuth authorization code flow. Open in browser after setting `codeVerifier` / `codeChallenge` (S256).
-  On success, user lands on `redirectUri` with `?code=` — copy into `authorizationCode` for **Exchange authorization code**.
+  Starts OAuth authorization code flow. **Before-request** generates PKCE if `codeVerifier` is empty.
+  **After-response** reads `Location`: `/login?state=` → `pendingState`; `redirect_uri?code=` → `authorizationCode`.
+
+  Optional `login_provider=google|microsoft|email` skips hosted login chooser (see **OAuth Providers**).

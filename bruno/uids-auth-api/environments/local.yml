@@ -16,11 +16,21 @@ variables:
     value: ""
   - name: authorizationCode
     value: ""
+  - name: oauthState
+    value: portal-state-123
+  - name: pendingState
+    value: ""
   - name: accessToken
     value: ""
   - name: refreshToken
     value: ""
   - name: csrfToken
     value: ""
-  - name: pendingState
+  - name: sessionCookie
+    value: ""
+  - name: lastUserId
+    value: ""
+  - name: lastProviderAuthUrl
+    value: ""
+  - name: enabledLoginProviders
     value: ""

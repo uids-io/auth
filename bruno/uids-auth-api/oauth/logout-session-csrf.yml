@@ -16,10 +16,21 @@ http:
     data: "{}"
   auth: inherit
 
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status >= 200 && res.status < 300) {
+          bru.setEnvVar("accessToken", "");
+          bru.setEnvVar("refreshToken", "");
+          bru.setEnvVar("authorizationCode", "");
+          bru.setEnvVar("csrfToken", "");
+          bru.setEnvVar("sessionCookie", "");
+          bru.setEnvVar("pendingState", "");
+        }
+
 settings:
   encodeUrl: true
 
 docs: |-
-  Cookie-based logout on auth domain. Requires session cookie `uids_auth_session` and matching `uids_csrf` cookie + `X-CSRF-Token` header.
-
-  Obtain CSRF from login response (`Set-Cookie: uids_csrf`).
+  Requires session + CSRF cookies in Bruno cookie jar. Clears auth env vars on success.

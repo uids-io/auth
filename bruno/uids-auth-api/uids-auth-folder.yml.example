@@ -11,3 +11,5 @@ docs: |-
   Base URL: {{authBaseUrl}}
 
   Merge env vars from bruno/uids-auth-api/environments/local.yml into your collection environments.
+
+  OAuth requests include scripts that auto-fill accessToken, pendingState, authorizationCode, etc.

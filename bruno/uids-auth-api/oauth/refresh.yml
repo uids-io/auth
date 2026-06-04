@@ -9,6 +9,9 @@ http:
   headers:
     - name: Content-Type
       value: application/json
+    - name: X-Uids-Token-Delivery
+      value: cookie
+      disabled: true
   body:
     type: json
     data: |-
@@ -21,17 +24,33 @@ runtime:
   scripts:
     - type: after-response
       code: |-
-        if (res.body && res.body.access_token) {
-          bru.setEnvVar("accessToken", res.body.access_token);
+        const getHeader = (res, name) => {
+          const lower = name.toLowerCase();
+          if (Array.isArray(res.headers)) {
+            const h = res.headers.find(
+              (x) => String(x.name || "").toLowerCase() === lower,
+            );
+            return h?.value;
+          }
+          return res.headers?.[name];
+        };
+        if (res.body?.access_token) {
+          bru.setEnvVar("accessToken", String(res.body.access_token));
         }
-        if (res.body && res.body.refresh_token) {
-          bru.setEnvVar("refreshToken", res.body.refresh_token);
+        if (res.body?.refresh_token) {
+          bru.setEnvVar("refreshToken", String(res.body.refresh_token));
+        }
+        const setCookie = getHeader(res, "set-cookie");
+        if (setCookie && String(setCookie).includes("uids_refresh_token")) {
+          console.log("new refresh token rotated into uids_refresh_token cookie");
+        }
+        if (res.status >= 400) {
+          bru.setEnvVar("accessToken", "");
+          bru.setEnvVar("refreshToken", "");
         }
 
 settings:
   encodeUrl: true
 
 docs: |-
-  Rotates refresh token. Accepts `refresh_token` in JSON body or `uids_refresh_token` cookie.
-
-  Reuse of revoked/rotated token returns `invalid_grant` and revokes session chain.
+  Rotates tokens; updates `accessToken` and `refreshToken` from JSON. Clears tokens on error (e.g. reuse).

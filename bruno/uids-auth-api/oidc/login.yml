@@ -1,23 +1,33 @@
 info:
   name: Login Page
   type: http
-  seq: 3
+  seq: 4
   tags:
     - browser
 
 http:
   method: GET
-  url: "{{authBaseUrl}}/login"
+  url: "{{authBaseUrl}}/login?state={{pendingState}}"
   params:
     - name: state
       value: "{{pendingState}}"
       type: query
-      disabled: true
   auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const pending = bru.getEnvVar("pendingState");
+
+        if (pending && String(pending).length > 0) {
+          console.log("login pending_state:", pending);
+        }
 
 settings:
   encodeUrl: true
+  timeout: 0
   followRedirects: false
+  maxRedirects: 5
 
-docs: |-
-  Hosted HTML login (email, Google, Microsoft). Use in browser; `state` is pending OAuth context from `/authorize`.
+docs: Hosted login HTML. Pass `pendingState` from **Authorize** `Location` (`/login?state=...`).

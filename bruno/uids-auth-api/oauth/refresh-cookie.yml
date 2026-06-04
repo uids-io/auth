@@ -1,0 +1,41 @@
+info:
+  name: Refresh Tokens (cookie)
+  type: http
+  seq: 5
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/refresh"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Uids-Token-Delivery
+      value: cookie
+  body:
+    type: json
+    data: "{}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.access_token) {
+          bru.setEnvVar("accessToken", String(res.body.access_token));
+        }
+        if (res.body?.refresh_token) {
+          bru.setEnvVar("refreshToken", String(res.body.refresh_token));
+        }
+        if (res.status >= 400) {
+          bru.setEnvVar("accessToken", "");
+        }
+        console.log(
+          "Requires uids_refresh_token cookie from prior token exchange (cookie mode)",
+        );
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Web SPA mode: refresh from HttpOnly `uids_refresh_token` cookie.
+  Enable Bruno cookie jar / credentials. Run **Exchange code (refresh in cookie)** first.

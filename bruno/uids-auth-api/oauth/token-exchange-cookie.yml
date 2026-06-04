@@ -30,12 +30,16 @@ runtime:
   scripts:
     - type: after-response
       code: |-
-        if (res.body && res.body.access_token) {
-          bru.setEnvVar("accessToken", res.body.access_token);
+        if (res.body?.access_token) {
+          bru.setEnvVar("accessToken", String(res.body.access_token));
         }
+        bru.setEnvVar("refreshToken", "");
+        console.log(
+          "refresh token in HttpOnly cookie uids_refresh_token (not in JSON)",
+        );
 
 settings:
   encodeUrl: true
 
 docs: |-
-  Web SDK mode: refresh token returned as HttpOnly cookie `uids_refresh_token`, stripped from JSON response.
+  Sets `accessToken` only; refresh is in `uids_refresh_token` cookie. Use **Refresh tokens** without body refresh_token when cookie is set.

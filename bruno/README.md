@@ -87,9 +87,33 @@ Keep `uids-auth-api` imported as a second collection in the same **workspace**. 
 2. Select **Local** environment
 3. Adjust `clientId` / `redirectUri` per portal (`merchant_portal_web`, `agency_portal_web`, …)
 
-### PKCE
+### PKCE and auto-filled environment variables
 
-Generate `codeVerifier` and S256 `codeChallenge` before **Authorize**. Set both in the environment, then run **Exchange authorization code**.
+**Authorize (PKCE)** runs a **before-request** script that generates `codeVerifier` and `codeChallenge` when they are empty.
+
+**After-response** scripts (where applicable) set:
+
+| Variable | Set by |
+|----------|--------|
+| `pendingState` | Authorize → redirect to `/login?state=` |
+| `authorizationCode` | Authorize / password login / magic callback → `?code=` |
+| `oauthState` | Redirect `?state=` (portal callback) |
+| `accessToken` / `refreshToken` | Token exchange, refresh |
+| `csrfToken` / `sessionCookie` | Set-Cookie on login/token |
+| `codeVerifier` / `codeChallenge` | Authorize before-request |
+| `lastUserId` | Register / password login JSON |
+
+Reference copy of helpers: `uids-auth-api/_lib/env-scripts.js` (inline in each request; edit both if you change logic).
+
+**Suggested flow in Bruno:** OAuth Providers → Authorize → (optional) Google Start in browser → Exchange authorization code → use `{{accessToken}}` on API collection.
+
+### Gaps to keep in sync with code
+
+When adding auth routes, update this collection and [sdk-contract.md](../docs/sdk-contract.md). Recent additions:
+
+- `GET /.well-known/oauth-providers` — portal custom login buttons
+- `X-Uids-Token-Delivery: cookie` on `/token` and `/refresh` — see **Exchange code (refresh in cookie)** and **Refresh tokens (cookie)**
+- `login_provider` query on `/authorize` (optional)
 
 ### Related docs
 

@@ -21,10 +21,11 @@ docs: |-
 
   ## Auth flows
 
-  1. `POST /devices/register` (optional, recommended)
-  2. `GET /authorize` with PKCE → browser login
-  3. `POST /token` with `code` + `code_verifier`
-  4. `POST /refresh` with refresh token (body or `uids_refresh_token` cookie)
-  5. API calls with `Authorization: Bearer {{accessToken}}`
+  1. `GET /.well-known/oauth-providers` — which login buttons to show on portals
+  2. `POST /devices/register` (optional, recommended)
+  3. `GET /authorize` with PKCE → auto-fills `pendingState` or `authorizationCode`
+  4. `POST /token` — use **Exchange code (refresh in cookie)** for web (`X-Uids-Token-Delivery: cookie`)
+  5. `POST /refresh` — body or **Refresh tokens (cookie)**
+  6. API calls with `Authorization: Bearer {{accessToken}}`
 
-  Set `codeVerifier` / `codeChallenge` before authorize (S256). After callback, set `authorizationCode` from `?code=`.
+  Requests include scripts to populate env vars (`accessToken`, `pendingState`, `authorizationCode`, etc.).

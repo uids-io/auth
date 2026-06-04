@@ -61,6 +61,16 @@ Content-Type: application/json
 }
 ```
 
+## Login providers (Google, Microsoft, email)
+
+```http
+GET /.well-known/oauth-providers
+```
+
+Returns `{ issuer, providers: [{ id, enabled }] }` where `id` is `google` | `microsoft` | `email`.
+
+Optional on `/authorize`: `login_provider=google` (or `microsoft`, `email`) to skip the hosted login chooser and redirect directly when that provider is enabled on the auth server.
+
 ## OAuth PKCE flow
 
 1. Generate `{ verifier, challenge }` with S256.
@@ -113,13 +123,21 @@ On `POST /token` and `POST /refresh`, send header `X-Uids-Token-Delivery: cookie
 
 | Method | Path |
 |--------|------|
+| GET | `/.well-known/openid-configuration` |
+| GET | `/.well-known/oauth-providers` |
+| GET | `/.well-known/jwks.json` |
 | POST | `/devices/register` |
 | GET | `/devices` |
 | POST | `/devices/revoke` |
 | GET | `/authorize` |
+| GET | `/oauth/google/start`, `/oauth/microsoft/start` |
 | POST | `/token` |
 | POST | `/refresh` |
 | POST | `/logout` |
+| POST | `/email/password/login`, `/email/password/register` |
+| POST | `/email/magic/start` |
+| GET | `/email/magic/callback` |
+| GET | `/session`, POST `/session/revoke` |
 
 ## Access token claims (when device-bound)
 

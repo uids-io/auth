@@ -17,10 +17,20 @@ http:
       }
   auth: inherit
 
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status >= 200 && res.status < 300) {
+          bru.setEnvVar("accessToken", "");
+          bru.setEnvVar("refreshToken", "");
+          bru.setEnvVar("authorizationCode", "");
+          bru.setEnvVar("csrfToken", "");
+          bru.setEnvVar("pendingState", "");
+        }
+
 settings:
   encodeUrl: true
 
 docs: |-
-  SPA logout: send refresh token in body. CSRF not required for this path.
-
-  Clears session cookies if present and `uids_refresh_token` cookie.
+  Clears token env vars on success.
