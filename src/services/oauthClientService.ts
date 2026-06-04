@@ -29,17 +29,6 @@ function mapClient(row: ClientRow): OAuthClient {
 	};
 }
 
-export interface SeedPortalClientsInput {
-	merchantRedirectUris: string[];
-	agencyRedirectUris: string[];
-	influencerRedirectUris: string[];
-	adminRedirectUris: string[];
-	merchantOrigins?: string[];
-	agencyOrigins?: string[];
-	influencerOrigins?: string[];
-	adminOrigins?: string[];
-}
-
 function originsFromRedirectUris(uris: string[]): string[] {
 	return [...new Set(uris.map((uri) => new URL(uri).origin))];
 }
@@ -102,6 +91,7 @@ export class OAuthClientService {
 	}): Promise<void> {
 		const origins =
 			params.origins ?? originsFromRedirectUris(params.redirectUris);
+
 		await this.pool.query(
 			`INSERT INTO auth.oauth_clients
          (id, name, client_type, allowed_redirect_uris, allowed_origins)
@@ -124,6 +114,7 @@ export class OAuthClientService {
 		const secretHash = await hashSecret(params.secret);
 		const origins =
 			params.origins ?? originsFromRedirectUris(params.redirectUris);
+
 		await this.pool.query(
 			`INSERT INTO auth.oauth_clients
          (id, name, client_type, client_secret_hash, allowed_redirect_uris, allowed_origins)
@@ -136,35 +127,4 @@ export class OAuthClientService {
 			[params.id, params.name, secretHash, params.redirectUris, origins],
 		);
 	}
-}
-
-export async function seedDefaultPortalClients(
-	pool: Pool,
-	input: SeedPortalClientsInput,
-): Promise<void> {
-	const service = new OAuthClientService(pool);
-	await service.upsertPublicClient({
-		id: "merchant_portal_web",
-		name: "Merchant Portal Web",
-		redirectUris: input.merchantRedirectUris,
-		origins: input.merchantOrigins,
-	});
-	await service.upsertPublicClient({
-		id: "agency_portal_web",
-		name: "Agency Portal Web",
-		redirectUris: input.agencyRedirectUris,
-		origins: input.agencyOrigins,
-	});
-	await service.upsertPublicClient({
-		id: "influencer_portal_web",
-		name: "Influencer Portal Web",
-		redirectUris: input.influencerRedirectUris,
-		origins: input.influencerOrigins,
-	});
-	await service.upsertPublicClient({
-		id: "admin_portal_web",
-		name: "Admin Portal Web",
-		redirectUris: input.adminRedirectUris,
-		origins: input.adminOrigins,
-	});
 }

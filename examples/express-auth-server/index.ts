@@ -1,11 +1,7 @@
 import express from 'express';
 import { Pool } from 'pg';
-import {
-  createAuthKit,
-  createAuthRouter,
-  runAuthMigrations,
-  seedDefaultPortalClients,
-} from '../../src/index.js';
+import { createAuthKit, createAuthRouter, runAuthMigrations } from '../../src/index.js';
+import { seedDefaultPortalClients } from './seedPortalClients.js';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 await runAuthMigrations(pool);
