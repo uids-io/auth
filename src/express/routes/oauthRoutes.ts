@@ -7,9 +7,15 @@ import {
 } from "../../oauth/callback.js";
 import { handleLogout } from "../../oauth/logout.js";
 import { handleRefresh } from "../../oauth/refresh.js";
+import {
+	clearRefreshTokenCookie,
+	setRefreshTokenCookie,
+	stripRefreshFromJson,
+	wantsCookieTokenDelivery,
+} from "../../oauth/refreshCookie.js";
 import { handleTokenExchange } from "../../oauth/token.js";
 import { parseDeviceContext } from "../../types.js";
-import { getClientIp, getUserAgent } from "../helpers.js";
+import { getClientIp, getUserAgent, parseCookies } from "../helpers.js";
 import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
 import {
 	validateBody,
@@ -98,10 +104,15 @@ export function registerOauthRoutes(
 		"/token",
 		validateBody(tokenBodySchema),
 		asyncRouteHandler(async (req, res) => {
-			const tokens = await handleTokenExchange(
+			let tokens = await handleTokenExchange(
 				context.kit,
 				req.body as Record<string, unknown>,
 			);
+
+			if (wantsCookieTokenDelivery(req.headers) && tokens.refresh_token) {
+				setRefreshTokenCookie(context.kit, res, tokens.refresh_token);
+				tokens = stripRefreshFromJson(tokens);
+			}
 
 			res.json(tokens);
 		}),
@@ -111,10 +122,15 @@ export function registerOauthRoutes(
 		"/refresh",
 		validateBody(refreshBodySchema),
 		asyncRouteHandler(async (req, res) => {
-			const tokens = await handleRefresh(
-				context.kit,
-				req.body as Record<string, unknown>,
-			);
+			let tokens = await handleRefresh(context.kit, {
+				body: req.body as Record<string, unknown>,
+				headers: { cookie: req.headers.cookie },
+			});
+
+			if (wantsCookieTokenDelivery(req.headers) && tokens.refresh_token) {
+				setRefreshTokenCookie(context.kit, res, tokens.refresh_token);
+				tokens = stripRefreshFromJson(tokens);
+			}
 
 			res.json(tokens);
 		}),
@@ -125,12 +141,20 @@ export function registerOauthRoutes(
 		csrfMiddleware,
 		validateBody(logoutBodySchema),
 		asyncRouteHandler(async (req, res) => {
+			const cookies = parseCookies(req.headers.cookie);
+			const refreshFromCookie = cookies.uids_refresh_token;
 			await handleLogout(context.kit, {
 				sessionToken: context.getSessionToken(req),
-				refreshToken: req.body.refresh_token,
+				refreshToken:
+					typeof req.body.refresh_token === "string"
+						? req.body.refresh_token
+						: typeof refreshFromCookie === "string"
+							? refreshFromCookie
+							: undefined,
 			});
 
 			context.clearSessionCookies(res);
+			clearRefreshTokenCookie(context.kit, res);
 
 			res.json({ success: true });
 		}),

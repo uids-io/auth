@@ -38,9 +38,11 @@ export const tokenBodySchema = z.object({
 
 const refreshTokenFieldSchema = z.string().min(1);
 
-export const refreshBodySchema = z.object({
-	refresh_token: refreshTokenFieldSchema,
-});
+export const refreshBodySchema = z
+	.object({
+		refresh_token: refreshTokenFieldSchema.optional(),
+	})
+	.passthrough();
 
 /** Logout via refresh token in body — CSRF bypass; same shape as logoutBodySchema when token is sent. */
 export const refreshTokenLogoutBodySchema = z.object({
