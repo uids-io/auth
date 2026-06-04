@@ -22,6 +22,12 @@ export { createAuthRouter } from "./express/createAuthRouter.js";
 export { type RequireAuthConfig, requireAuth } from "./express/requireAuth.js";
 export { mapGoogleProfile } from "./oauth/providers/google.js";
 export { mapMicrosoftProfile } from "./oauth/providers/microsoft.js";
+export {
+	type AuthLoginProviderId,
+	type AuthProviderInfo,
+	type AuthProvidersResponse,
+	getAuthProviders,
+} from "./oidc/providers.js";
 export { AuthService } from "./services/authService.js";
 export { DeviceService } from "./services/deviceService.js";
 export { OAuthClientService } from "./services/oauthClientService.js";

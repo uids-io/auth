@@ -1,8 +1,14 @@
 import { z } from "zod";
 
-export type UserStatus = "active" | "disabled" | "deleted";
-export type SessionStatus = "active" | "revoked" | "expired";
-export type DeviceStatus = "active" | "revoked";
+export const userStatusSchema = z.enum(["active", "disabled", "deleted"]);
+export type UserStatus = z.infer<typeof userStatusSchema>;
+
+export const sessionStatusSchema = z.enum(["active", "revoked", "expired"]);
+export type SessionStatus = z.infer<typeof sessionStatusSchema>;
+
+export const deviceStatusSchema = z.enum(["active", "revoked"]);
+export type DeviceStatus = z.infer<typeof deviceStatusSchema>;
+
 export const devicePlatformSchema = z.enum([
 	"web",
 	"ios",
@@ -11,10 +17,22 @@ export const devicePlatformSchema = z.enum([
 	"unknown",
 ]);
 export type DevicePlatform = z.infer<typeof devicePlatformSchema>;
-export type OAuthClientType = "public" | "confidential";
-export type SameSiteOption = "strict" | "lax" | "none";
-export type AuthContextType = "oauth_authorize" | "social_login" | "magic_link";
-export type AuthProviders = "google" | "microsoft" | "email";
+
+export const oauthClientTypeSchema = z.enum(["public", "confidential"]);
+export type OAuthClientType = z.infer<typeof oauthClientTypeSchema>;
+
+export const sameSiteOptionSchema = z.enum(["strict", "lax", "none"]);
+export type SameSiteOption = z.infer<typeof sameSiteOptionSchema>;
+
+export const authContextTypeSchema = z.enum([
+	"oauth_authorize",
+	"social_login",
+	"magic_link",
+]);
+export type AuthContextType = z.infer<typeof authContextTypeSchema>;
+
+export const authProvidersSchema = z.enum(["google", "microsoft", "email"]);
+export type AuthProviders = z.infer<typeof authProvidersSchema>;
 
 export interface AuthUser {
 	id: number;

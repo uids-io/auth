@@ -1,6 +1,7 @@
 import type { Router } from "express";
 import { getOpenIdConfiguration } from "../../oidc/discovery.js";
 import { getJwks } from "../../oidc/jwks.js";
+import { getAuthProviders } from "../../oidc/providers.js";
 import { renderLoginPage } from "../helpers.js";
 import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
 import { validateQuery } from "../middleware/validationMiddleware.js";
@@ -13,6 +14,10 @@ export function registerOidcRoutes(
 ): void {
 	router.get("/.well-known/openid-configuration", (_req, res) => {
 		res.json(getOpenIdConfiguration(context.kit));
+	});
+
+	router.get("/.well-known/oauth-providers", (_req, res) => {
+		res.json(getAuthProviders(context.kit));
 	});
 
 	router.get(

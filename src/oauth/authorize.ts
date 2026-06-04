@@ -1,7 +1,13 @@
 import type { AuthKit } from "../config.js";
 import { generateOpaqueToken } from "../crypto/random.js";
-import { UnauthorizedError } from "../errors.js";
+import { InvalidRequestError, UnauthorizedError } from "../errors.js";
+import {
+	type AuthLoginProviderId,
+	isLoginProviderEnabled,
+	parseLoginProvider,
+} from "../oidc/providers.js";
 import type { DevicePlatform, PendingAuthContext } from "../types.js";
+import { startSocialLogin } from "./callback.js";
 import { parseScope, validateAuthorizeParams } from "./clients.js";
 
 export interface AuthorizeResult {
@@ -85,10 +91,38 @@ export async function handleAuthorize(
 	};
 	await kit.auth.savePendingContext(state, pending);
 
+	const loginProvider = parseLoginProvider(params.query.login_provider);
+	if (loginProvider) {
+		if (!isLoginProviderEnabled(kit, loginProvider)) {
+			throw new InvalidRequestError(
+				`Login provider not enabled: ${loginProvider}`,
+				"provider_not_configured",
+			);
+		}
+		const url = await resolveLoginProviderUrl(kit, loginProvider, state);
+		return { type: "redirect_login", url };
+	}
+
 	const loginUrl = new URL("/login", kit.config.issuer);
 	loginUrl.searchParams.set("state", state);
 
 	return { type: "redirect_login", url: loginUrl.toString() };
+}
+
+async function resolveLoginProviderUrl(
+	kit: AuthKit,
+	provider: AuthLoginProviderId,
+	state: string,
+): Promise<string> {
+	const issuer = kit.config.issuer.replace(/\/$/, "");
+
+	if (provider === "google" || provider === "microsoft") {
+		return startSocialLogin(kit, provider, { pendingState: state });
+	}
+
+	const loginUrl = new URL("/login", issuer);
+	loginUrl.searchParams.set("state", state);
+	return loginUrl.toString();
 }
 
 export async function completePendingAuthorize(

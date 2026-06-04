@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { devicePlatformSchema } from "../../types.js";
+import { authProvidersSchema, devicePlatformSchema } from "../../types.js";
 
 export const socialStartQuerySchema = z.object({
 	state: z.string().optional(),
@@ -25,6 +25,7 @@ export const authorizeQuerySchema = z
 		platform_version: z.string().optional(),
 		app_version: z.string().optional(),
 		device_name: z.string().optional(),
+		login_provider: authProvidersSchema.optional(),
 	})
 	.passthrough();
 
