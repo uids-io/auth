@@ -36,7 +36,7 @@ Use these in your auth server (see [`examples/express-auth-server/.env.example`]
 | `MICROSOFT_TENANT` | No | Default `common` |
 | `LOG_LEVEL` | No | Pino level: `debug`, `info`, `warn`, `error` (default: `debug` in dev, `info` in production) |
 
-Portal redirect URIs are passed to `seedDefaultPortalClients`, not env vars, in the example apps.
+Register OAuth clients for each portal with `OAuthClientService.upsertPublicClient` (see [Portal OAuth clients](#portal-oauth-clients)). The example auth server uses a local seed helper, not a package export.
 
 ## Database migrations
 
@@ -58,18 +58,19 @@ import { Pool } from 'pg';
 import {
   createAuthKit,
   createAuthRouter,
+  OAuthClientService,
   runAuthMigrations,
-  seedDefaultPortalClients,
 } from '@advcomm/uids-io-auth';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 await runAuthMigrations(pool);
 
-await seedDefaultPortalClients(pool, {
-  merchantRedirectUris: ['https://merchant.example.com/auth/callback'],
-  agencyRedirectUris: ['https://agency.example.com/auth/callback'],
-  influencerRedirectUris: ['https://influencer.example.com/auth/callback'],
-  adminRedirectUris: ['https://admin.example.com/auth/callback'],
+// Register one public OAuth client per portal (PKCE). Repeat per app.
+const oauthClients = new OAuthClientService(pool);
+await oauthClients.upsertPublicClient({
+  id: 'merchant_portal_web',
+  name: 'Merchant Portal Web',
+  redirectUris: ['https://merchant.example.com/auth/callback'],
 });
 
 const authKit = await createAuthKit({
@@ -120,6 +121,8 @@ app.listen(3000);
 - **Middleware** — CORS, CSRF on state-changing routes, Zod validation, centralized error handling
 
 See [`examples/express-auth-server`](examples/express-auth-server).
+
+**API docs (Bruno):** Import OpenCollection [`bruno/uids-auth-api`](bruno/uids-auth-api) into your Bruno workspace alongside backend service collections — see [`bruno/README.md`](bruno/README.md).
 
 ## API server (api.example.com)
 
@@ -213,18 +216,23 @@ Set `LOG_LEVEL=debug` locally. In production, logs are JSON (no pretty-print).
 3. Create a client secret.
 4. Set `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, and configure `tenant` (`common`, `organizations`, `consumers`, or a tenant ID).
 
-## Portal OAuth client seeding
+## Portal OAuth clients
+
+Each portal is a **public** OAuth client (PKCE, no client secret in the browser):
 
 ```typescript
-await seedDefaultPortalClients(pool, {
-  merchantRedirectUris: ['https://merchant.example.com/auth/callback'],
-  agencyRedirectUris: ['https://agency.example.com/auth/callback'],
-  influencerRedirectUris: ['https://influencer.example.com/auth/callback'],
-  adminRedirectUris: ['https://admin.example.com/auth/callback'],
+import { OAuthClientService } from '@advcomm/uids-io-auth';
+
+const oauthClients = new OAuthClientService(pool);
+await oauthClients.upsertPublicClient({
+  id: 'your_portal_web',
+  name: 'Your Portal Web',
+  redirectUris: ['https://your-portal.example.com/auth/callback'],
+  // origins optional — derived from redirect URIs when omitted
 });
 ```
 
-Seeded clients: `merchant_portal_web`, `agency_portal_web`, `influencer_portal_web`, `admin_portal_web` (all public, PKCE).
+For local dev with multiple UIDs portals, see [`examples/express-auth-server/seedPortalClients.ts`](examples/express-auth-server/seedPortalClients.ts) (`merchant_portal_web`, `agency_portal_web`, etc.). That helper is **not** exported from the package.
 
 ## Login flow (PKCE)
 
@@ -242,7 +250,7 @@ Companion client SDKs (React, Flutter, native) generate a stable UUID `device_id
 
 Supported platforms: `web`, `ios`, `android`, `desktop`, `unknown` (validated on register).
 
-See [docs/sdk-contract.md](docs/sdk-contract.md) for the full SDK contract.
+See [docs/sdk-contract.md](docs/sdk-contract.md) for the full client/server contract.
 
 ### Recommended companion SDKs (future packages)
 
@@ -258,7 +266,7 @@ See [docs/sdk-contract.md](docs/sdk-contract.md) for the full SDK contract.
 **Kit & HTTP**
 
 - `createAuthKit`, `createAuthRouter`, `requireAuth`
-- `runAuthMigrations`, `seedDefaultPortalClients`
+- `runAuthMigrations`
 - `verifyAccessToken`, `generatePkcePair`, `verifyCodeChallenge`
 
 **Services** (use directly without Express)

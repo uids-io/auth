@@ -1,6 +1,8 @@
 # Client SDK Contract
 
-This document defines the contract between `@uids-io/auth` (server) and companion client SDKs. SDK packages (`@uids-io/auth-react`, `@uids-io/auth-flutter`, etc.) are maintained separately.
+This document defines the contract between `@advcomm/uids-io-auth` (server) and companion client SDKs. SDK packages (`@uids-io/auth-react`, `@uids-io/auth-flutter`, etc.) are maintained separately.
+
+**Bruno / OpenCollection:** [../bruno/uids-auth-api](../bruno/uids-auth-api) — HTTP API collection for `createAuthRouter` (import with backend API docs).
 
 ## Device identity model
 
@@ -71,10 +73,14 @@ Content-Type: application/json
 
 | Platform | Refresh token storage |
 |----------|----------------------|
-| Web (React) | Memory + httpOnly cookie preferred; if body token, avoid localStorage for refresh on shared devices |
+| Web (React) | **Default:** HttpOnly cookie on auth issuer (`X-Uids-Token-Delivery: cookie`); access token in memory. **Fallback:** `refresh_token` in JSON + `tokenDelivery: body` |
 | iOS | Keychain |
 | Android | EncryptedSharedPreferences / Keystore |
 | Desktop | OS keychain |
+
+### Cookie delivery (web)
+
+On `POST /token` and `POST /refresh`, send header `X-Uids-Token-Delivery: cookie` and `credentials: include`. Server sets `uids_refresh_token` HttpOnly cookie and omits `refresh_token` from JSON. `/refresh` accepts cookie or body `refresh_token`.
 
 ## Platform recommendations
 
