@@ -28,4 +28,7 @@ docs: |-
   Lists login methods for custom portal UI: `google`, `microsoft`, `email`.
   Sets `enabledLoginProviders` (comma-separated) on success.
 
+  Social providers include `authorizedRedirectUris` and `idpConsole` (`google_cloud`,
+  `microsoft_entra`) — copy those URIs into the matching developer console.
+
   Use before building portal buttons; optional on `/authorize` as `login_provider=google`.

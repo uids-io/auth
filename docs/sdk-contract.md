@@ -67,7 +67,14 @@ Content-Type: application/json
 GET /.well-known/oauth-providers
 ```
 
-Returns `{ issuer, providers: [{ id, enabled }] }` where `id` is `google` | `microsoft` | `email`.
+Returns `{ issuer, providers: [...] }` where each provider has `id` (`google` | `microsoft` | `email`) and `enabled`.
+
+For Google and Microsoft (even when `enabled: false`), the response includes setup hints for cloud consoles:
+
+- `authorizedRedirectUris` — exact URI(s) to register as authorized redirect URIs (uses configured `callbackUrl` when the provider is enabled, otherwise `{issuer}/oauth/{provider}/callback`)
+- `idpConsole` — `google_cloud` or `microsoft_entra`
+
+Email has no external IdP console fields.
 
 Optional on `/authorize`: `login_provider=google` (or `microsoft`, `email`) to skip the hosted login chooser and redirect directly when that provider is enabled on the auth server.
 

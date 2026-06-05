@@ -25,6 +25,25 @@ describe("auth providers", () => {
 		expect(res.providers.find((p) => p.id === "email")?.enabled).toBe(true);
 	});
 
+	it("includes IdP console redirect URIs for social providers", () => {
+		const res = getAuthProviders(kit);
+		const google = res.providers.find((p) => p.id === "google");
+		expect(google?.idpConsole).toBe("google_cloud");
+		expect(google?.authorizedRedirectUris).toEqual([
+			"https://auth.example.com/oauth/google/callback",
+		]);
+
+		const microsoft = res.providers.find((p) => p.id === "microsoft");
+		expect(microsoft?.idpConsole).toBe("microsoft_entra");
+		expect(microsoft?.authorizedRedirectUris).toEqual([
+			"https://auth.example.com/oauth/microsoft/callback",
+		]);
+
+		const email = res.providers.find((p) => p.id === "email");
+		expect(email?.authorizedRedirectUris).toBeUndefined();
+		expect(email?.idpConsole).toBeUndefined();
+	});
+
 	it("parses login_provider query values", () => {
 		expect(parseLoginProvider("google")).toBe("google");
 		expect(parseLoginProvider("invalid")).toBeUndefined();
@@ -33,5 +52,28 @@ describe("auth providers", () => {
 	it("checks enablement", () => {
 		expect(isLoginProviderEnabled(kit, "google")).toBe(true);
 		expect(isLoginProviderEnabled(kit, "microsoft")).toBe(false);
+	});
+
+	it("uses configured callbackUrl when provider is enabled", () => {
+		const customKit = {
+			...kit,
+			config: {
+				...kit.config,
+				providers: {
+					google: {
+						clientId: "g",
+						clientSecret: "s",
+						callbackUrl:
+							"https://auth.example.com/custom/google/callback",
+					},
+				},
+			},
+		} as Parameters<typeof getAuthProviders>[0];
+		const google = getAuthProviders(customKit).providers.find(
+			(p) => p.id === "google",
+		);
+		expect(google?.authorizedRedirectUris).toEqual([
+			"https://auth.example.com/custom/google/callback",
+		]);
 	});
 });

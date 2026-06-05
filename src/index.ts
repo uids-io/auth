@@ -23,6 +23,7 @@ export { type RequireAuthConfig, requireAuth } from "./express/requireAuth.js";
 export { mapGoogleProfile } from "./oauth/providers/google.js";
 export { mapMicrosoftProfile } from "./oauth/providers/microsoft.js";
 export {
+	type AuthIdpConsole,
 	type AuthLoginProviderId,
 	type AuthProviderInfo,
 	type AuthProvidersResponse,
