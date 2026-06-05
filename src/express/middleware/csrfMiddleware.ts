@@ -1,6 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
 import type { AuthKit } from "../../config.js";
-import { REFRESH_TOKEN_COOKIE_NAME } from "../../oauth/refreshCookie.js";
 import { parseCookies } from "../helpers.js";
 import { isRefreshTokenLogoutRequest } from "../validation/oauthValidation.js";
 
@@ -23,19 +22,16 @@ export function createCsrfMiddleware(kit: AuthKit) {
 			return;
 		}
 
-		const cookies = req.cookies ?? parseCookies(req.headers.cookie);
-
-		// Refresh token in body proves intent; CSRF not required (see refreshTokenLogoutBodySchema).
-		if (req.path === "/logout" && isRefreshTokenLogoutRequest(req.body)) {
+		// HttpOnly refresh cookie (SPA cookie delivery mode).
+		if (req.csrfBypassed) {
 			next();
 			return;
 		}
 
-		// HttpOnly refresh cookie on /refresh (SPA cookie delivery mode).
-		if (
-			req.path === "/refresh" &&
-			typeof cookies[REFRESH_TOKEN_COOKIE_NAME] === "string"
-		) {
+		const cookies = req.cookies ?? parseCookies(req.headers.cookie);
+
+		// Refresh token in body proves intent; CSRF not required (see refreshTokenLogoutBodySchema).
+		if (req.path === "/logout" && isRefreshTokenLogoutRequest(req.body)) {
 			next();
 			return;
 		}

@@ -200,6 +200,42 @@ describe('integration express', () => {
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ success: true });
     });
+
+    it('allows logout by HttpOnly refresh cookie without CSRF (SPA cookie delivery)', async () => {
+      const user = await kit.users.createUser({
+        email: 'logout-refresh-cookie@test.com',
+        emailVerified: true,
+      });
+      const { session, sessionToken, csrfToken } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+      const tokens = await kit.tokens.issueTokens({
+        user,
+        clientId: 'merchant_portal_web',
+        scopes: ['openid'],
+        sessionId: session.id,
+      });
+      const refreshToken = tokens.refresh_token;
+      expect(refreshToken).toBeDefined();
+      if (!refreshToken) {
+        throw new Error('Expected refresh token to be present');
+      }
+
+      const signed = kit.sessions.signSessionCookie(sessionToken);
+
+      const res = await request(authApp)
+        .post('/logout')
+        .set('Cookie', [
+          `${kit.config.cookie.name}=${signed}`,
+          `uids_csrf=${csrfToken}`,
+          `uids_refresh_token=${refreshToken}`,
+        ])
+        .send({});
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true });
+    });
   });
 
   describe('device validation', () => {
