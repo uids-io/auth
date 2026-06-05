@@ -77,6 +77,7 @@ function registerSocialProviderRoutes(
 export function registerOauthRoutes(
 	router: Router,
 	context: AuthRouterContext,
+	csrfBypassMiddleware: RequestHandler,
 	csrfMiddleware: RequestHandler,
 ): void {
 	router.get(
@@ -138,6 +139,7 @@ export function registerOauthRoutes(
 
 	router.post(
 		"/logout",
+		csrfBypassMiddleware,
 		csrfMiddleware,
 		validateBody(logoutBodySchema),
 		asyncRouteHandler(async (req, res) => {

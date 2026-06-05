@@ -16,6 +16,7 @@ import {
 export function registerDeviceRoutes(
 	router: Router,
 	context: AuthRouterContext,
+	csrfBypassMiddleware: RequestHandler,
 	csrfMiddleware: RequestHandler,
 ): void {
 	router.post(
@@ -50,6 +51,7 @@ export function registerDeviceRoutes(
 
 	router.post(
 		"/devices/revoke",
+		csrfBypassMiddleware,
 		csrfMiddleware,
 		validateBody(deviceRevokeBodySchema),
 		asyncRouteHandler(async (req, res) => {

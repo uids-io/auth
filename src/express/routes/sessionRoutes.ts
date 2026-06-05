@@ -5,6 +5,7 @@ import type { AuthRouterContext } from "../routerContext.js";
 export function registerSessionRoutes(
 	router: Router,
 	context: AuthRouterContext,
+	csrfBypassMiddleware: RequestHandler,
 	csrfMiddleware: RequestHandler,
 ): void {
 	router.get(
@@ -27,6 +28,7 @@ export function registerSessionRoutes(
 
 	router.post(
 		"/session/revoke",
+		csrfBypassMiddleware,
 		csrfMiddleware,
 		asyncRouteHandler(async (req, res) => {
 			const sessionToken = context.getSessionToken(req);

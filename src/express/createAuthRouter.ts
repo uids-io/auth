@@ -2,6 +2,7 @@ import type { Router } from "express";
 import { Router as createRouter } from "express";
 import type { AuthKit } from "../config.js";
 import { createCorsMiddleware } from "./middleware/corsMiddleware.js";
+import { createCsrfBypassMiddleware } from "./middleware/csrfBypassMiddleware.js";
 import { createCsrfMiddleware } from "./middleware/csrfMiddleware.js";
 import { createErrorMiddleware } from "./middleware/errorMiddleware.js";
 import { createAuthRouterContext } from "./routerContext.js";
@@ -16,12 +17,13 @@ export function createAuthRouter(kit: AuthKit): Router {
 	const context = createAuthRouterContext(kit);
 	router.use(createCorsMiddleware(kit));
 	const csrfProtection = createCsrfMiddleware(kit);
+	const csrfBypassMiddleware = createCsrfBypassMiddleware(kit);
 
 	registerOidcRoutes(router, context);
-	registerOauthRoutes(router, context, csrfProtection);
+	registerOauthRoutes(router, context, csrfBypassMiddleware, csrfProtection);
 	registerEmailRoutes(router, context);
-	registerSessionRoutes(router, context, csrfProtection);
-	registerDeviceRoutes(router, context, csrfProtection);
+	registerSessionRoutes(router, context, csrfBypassMiddleware, csrfProtection);
+	registerDeviceRoutes(router, context, csrfBypassMiddleware, csrfProtection);
 
 	router.use(createErrorMiddleware());
 
