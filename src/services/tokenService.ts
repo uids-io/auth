@@ -34,7 +34,7 @@ interface SigningKeyRow {
 	private_jwk: JWK | null;
 }
 
-interface RefreshTokenRow {
+interface RefreshTokenLockRow {
 	id: string;
 	session_id: string;
 	token_hash: string;
@@ -42,11 +42,15 @@ interface RefreshTokenRow {
 	rotated_at: Date | null;
 	expires_at: Date;
 	revoked_at: Date | null;
+}
+
+interface RefreshSessionContextRow {
 	user_id: string;
 	client_id: string | null;
 	device_id: string | null;
 	device_external_id: string | null;
 	platform: DevicePlatform | null;
+	status: string;
 }
 
 export interface VerifyAccessTokenOptions {
@@ -374,20 +378,18 @@ export class TokenService {
 
 		try {
 			await client.query("BEGIN");
-			const { rows } = await client.query<RefreshTokenRow>(
-				`SELECT rt.id, rt.session_id, rt.token_hash, rt.parent_token_id, rt.rotated_at,
-                rt.expires_at, rt.revoked_at,
-                s.user_id, s.client_id, s.device_id,
-                d.device_id AS device_external_id, d.platform
-         FROM auth.refresh_tokens rt
-         JOIN auth.sessions s ON s.id = rt.session_id
-         LEFT JOIN auth.devices d ON d.id = s.device_id
-         WHERE rt.token_hash = $1
+			// Lock refresh token only — PostgreSQL rejects FOR UPDATE on LEFT JOIN
+			// nullable sides; pg-mem does not support FOR UPDATE OF table aliases.
+			const { rows: tokenRows } = await client.query<RefreshTokenLockRow>(
+				`SELECT id, session_id, token_hash, parent_token_id, rotated_at,
+                expires_at, revoked_at
+         FROM auth.refresh_tokens
+         WHERE token_hash = $1
          FOR UPDATE`,
 				[tokenHash],
 			);
 
-			const refreshTokenRow = rows[0];
+			const refreshTokenRow = tokenRows[0];
 			if (!refreshTokenRow) {
 				throw new UnauthorizedError("Invalid refresh token", "invalid_grant");
 			}
@@ -409,12 +411,18 @@ export class TokenService {
 				throw new UnauthorizedError("Refresh token expired", "invalid_grant");
 			}
 
-			const { rows: sessionRows } = await client.query<{ status: string }>(
-				"SELECT status FROM auth.sessions WHERE id = $1",
-				[refreshTokenRow.session_id],
-			);
+			const { rows: sessionRows } =
+				await client.query<RefreshSessionContextRow>(
+					`SELECT s.user_id, s.client_id, s.device_id, s.status,
+                d.device_id AS device_external_id, d.platform
+         FROM auth.sessions s
+         LEFT JOIN auth.devices d ON d.id = s.device_id
+         WHERE s.id = $1`,
+					[refreshTokenRow.session_id],
+				);
+			const sessionContext = sessionRows[0];
 
-			if (sessionRows[0]?.status !== "active") {
+			if (sessionContext?.status !== "active") {
 				throw new UnauthorizedError("Session revoked", "invalid_grant");
 			}
 
@@ -436,8 +444,8 @@ export class TokenService {
 					refreshTtl,
 				],
 			);
-			const userId = Number(refreshTokenRow.user_id);
-			const clientId = refreshTokenRow.client_id ?? "unknown";
+			const userId = Number(sessionContext.user_id);
+			const clientId = sessionContext.client_id ?? "unknown";
 			const { rows: userRows } = await client.query<{
 				primary_email: string | null;
 				display_name: string | null;
@@ -456,13 +464,13 @@ export class TokenService {
 			}
 
 			const device: Device | null =
-				refreshTokenRow.device_external_id && refreshTokenRow.platform
+				sessionContext.device_external_id && sessionContext.platform
 					? {
-							id: Number(refreshTokenRow.device_id),
-							deviceId: refreshTokenRow.device_external_id,
+							id: Number(sessionContext.device_id),
+							deviceId: sessionContext.device_external_id,
 							clientId,
 							userId,
-							platform: refreshTokenRow.platform,
+							platform: sessionContext.platform,
 							platformVersion: null,
 							appVersion: null,
 							deviceName: null,
