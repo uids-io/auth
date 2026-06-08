@@ -1,0 +1,72 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+# GITHUB_TOKEN cannot push tags/commits that touch .github/workflows/* (GitHub blocks that).
+# Set repo secret RELEASE_GIT_TOKEN to a PAT with repo + workflow scopes; workflow passes it below.
+#
+# npm: trusted publishing needs npm CLI >= 11.5.1 (use Node 24+; avoid `npm i -g npm` on runners — can break).
+# If the package "disallows tokens", OIDC still needs: id-token write + trusted publisher on npmjs.com.
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      # No git hooks during install; semantic-release must not pick up local hook side effects
+      HUSKY: '0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # semantic-release v25+: ^22.14.0 or >=24.10.0; Node 24 ships npm 11.x (OIDC / trusted publishing).
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        # package-lock.json must be generated with the same npm as Node 24 bundles (~11.13+), e.g. `npx npm@latest install`.
+        # Older npm (e.g. 11.5.x) writes a lockfile that fails `npm ci` on Actions with "Missing: … from lock file".
+        # Skip lifecycle scripts (e.g. prepare/husky). Publish still runs prepublishOnly for build.
+        run: npm ci --ignore-scripts
+
+      # Intentionally no lint/format/tests here — release must not run npm lifecycle
+      # hooks that invoke check:all (see RELEASING.md). Quality gates: local + optional CI.
+
+      - name: Ensure semver baseline tag for semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_GIT_TOKEN || secrets.GITHUB_TOKEN }}
+        run: node scripts/ensure-release-baseline.cjs
+
+      # whoami only proves the token is valid; it does not prove publish is allowed (org teams, or
+      # package "disallow tokens" + trusted publishing — then publish uses OIDC, not this token).
+      - name: Verify npm token (whoami only, optional if OIDC-only)
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            printf '%s\n' "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "$HOME/.npmrc"
+            echo "npm whoami (token identity):"
+            npm whoami --registry https://registry.npmjs.org
+          else
+            echo "NPM_TOKEN unset — expecting trusted publishing (OIDC) for npm publish."
+          fi
+
+      - name: Semantic release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_GIT_TOKEN || secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release

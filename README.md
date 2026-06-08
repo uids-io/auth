@@ -297,6 +297,10 @@ Integration tests use **pg-mem** by default (no Docker required). Optional backe
 - `TEST_DATABASE_URL=postgres://...` — run against an existing PostgreSQL instance
 - `USE_TESTCONTAINERS=1` — use Docker testcontainers when available
 
+## Releases
+
+Releases on **`main`** use **semantic-release** — see [RELEASING.md](RELEASING.md). Use [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.) so version bumps and npm publish happen automatically.
+
 ## License
 
 MIT
