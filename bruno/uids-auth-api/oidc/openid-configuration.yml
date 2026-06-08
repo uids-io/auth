@@ -1,0 +1,16 @@
+info:
+  name: OpenID Configuration
+  type: http
+  seq: 1
+
+http:
+  method: GET
+  url: "{{authBaseUrl}}/.well-known/openid-configuration"
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  followRedirects: true
+
+docs: |-
+  OIDC discovery document. Lists `authorization_endpoint`, `token_endpoint`, `jwks_uri`, supported grants and scopes.

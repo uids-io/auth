@@ -1,0 +1,7 @@
+info:
+  name: Session
+  type: folder
+  seq: 5
+
+docs: |-
+  Auth-domain session cookie introspection and revoke.

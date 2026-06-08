@@ -1,6 +1,8 @@
 # Client SDK Contract
 
-This document defines the contract between `@uids-io/auth` (server) and companion client SDKs. SDK packages (`@uids-io/auth-react`, `@uids-io/auth-flutter`, etc.) are maintained separately.
+This document defines the contract between `@advcomm/uids-io-auth` (server) and companion client SDKs. SDK packages (`@uids-io/auth-react`, `@uids-io/auth-flutter`, etc.) are maintained separately.
+
+**Bruno / OpenCollection:** [../bruno/uids-auth-api](../bruno/uids-auth-api) — HTTP API collection for `createAuthRouter` (import with backend API docs).
 
 ## Device identity model
 
@@ -59,6 +61,23 @@ Content-Type: application/json
 }
 ```
 
+## Login providers (Google, Microsoft, email)
+
+```http
+GET /.well-known/oauth-providers
+```
+
+Returns `{ issuer, providers: [...] }` where each provider has `id` (`google` | `microsoft` | `email`) and `enabled`.
+
+For Google and Microsoft (even when `enabled: false`), the response includes setup hints for cloud consoles:
+
+- `authorizedRedirectUris` — exact URI(s) to register as authorized redirect URIs (uses configured `callbackUrl` when the provider is enabled, otherwise `{issuer}/oauth/{provider}/callback`)
+- `idpConsole` — `google_cloud` or `microsoft_entra`
+
+Email has no external IdP console fields.
+
+Optional on `/authorize`: `login_provider=google` (or `microsoft`, `email`) to skip the hosted login chooser and redirect directly when that provider is enabled on the auth server.
+
 ## OAuth PKCE flow
 
 1. Generate `{ verifier, challenge }` with S256.
@@ -71,10 +90,14 @@ Content-Type: application/json
 
 | Platform | Refresh token storage |
 |----------|----------------------|
-| Web (React) | Memory + httpOnly cookie preferred; if body token, avoid localStorage for refresh on shared devices |
+| Web (React) | **Default:** HttpOnly cookie on auth issuer (`X-Uids-Token-Delivery: cookie`); access token in memory. **Fallback:** `refresh_token` in JSON + `tokenDelivery: body` |
 | iOS | Keychain |
 | Android | EncryptedSharedPreferences / Keystore |
 | Desktop | OS keychain |
+
+### Cookie delivery (web)
+
+On `POST /token` and `POST /refresh`, send header `X-Uids-Token-Delivery: cookie` and `credentials: include`. Server sets `uids_refresh_token` HttpOnly cookie and omits `refresh_token` from JSON. `/refresh` accepts cookie or body `refresh_token`.
 
 ## Platform recommendations
 
@@ -107,13 +130,21 @@ Content-Type: application/json
 
 | Method | Path |
 |--------|------|
+| GET | `/.well-known/openid-configuration` |
+| GET | `/.well-known/oauth-providers` |
+| GET | `/.well-known/jwks.json` |
 | POST | `/devices/register` |
 | GET | `/devices` |
 | POST | `/devices/revoke` |
 | GET | `/authorize` |
+| GET | `/oauth/google/start`, `/oauth/microsoft/start` |
 | POST | `/token` |
 | POST | `/refresh` |
 | POST | `/logout` |
+| POST | `/email/password/login`, `/email/password/register` |
+| POST | `/email/magic/start` |
+| GET | `/email/magic/callback` |
+| GET | `/session`, POST `/session/revoke` |
 
 ## Access token claims (when device-bound)
 

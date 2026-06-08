@@ -1,37 +1,21 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import express from 'express';
+import { SignJWT } from 'jose';
 import request from 'supertest';
 import { createTestAuthKit, setupTestDb, teardownTestDb } from '../helpers/testDb.js';
-import { createAuthRouter } from '../../src/express/createAuthRouter.js';
-import { requireAuth } from '../../src/express/requireAuth.js';
 import type { AuthKit } from '../../src/config.js';
+import { createAuthTestApp, createProtectedApiTestApp } from '../helpers/apps.js';
 
 describe('integration express', () => {
   let kit: AuthKit;
-  let apiApp: express.Application;
-  let authApp: express.Application;
+  let apiApp: Awaited<ReturnType<typeof createProtectedApiTestApp>>;
+  let authApp: ReturnType<typeof createAuthTestApp>;
 
   beforeAll(async () => {
     await setupTestDb();
     kit = await createTestAuthKit();
 
-    const jwks = await kit.tokens.getPublicJwks();
-    apiApp = express();
-    apiApp.use(express.json());
-    apiApp.use(
-      requireAuth({
-        issuer: kit.config.issuer,
-        audience: kit.config.apiAudience,
-        localJwks: jwks.keys,
-      }),
-    );
-    apiApp.get('/me', (req, res) => {
-      res.json({ auth: req.auth });
-    });
-
-    authApp = express();
-    authApp.use(express.json());
-    authApp.use(createAuthRouter(kit));
+    apiApp = await createProtectedApiTestApp(kit);
+    authApp = createAuthTestApp(kit);
   });
 
   afterAll(async () => {
@@ -63,6 +47,41 @@ describe('integration express', () => {
       expect(res.status).toBe(200);
       expect(res.body.auth.userId).toBe(user.id);
     });
+
+    it('returns invalid_token for malformed bearer token', async () => {
+      const res = await request(apiApp)
+        .get('/me')
+        .set('Authorization', 'Bearer definitely.not.a.valid.token');
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({
+        error: 'invalid_token',
+        error_description: 'Token validation failed',
+      });
+    });
+
+    it('rejects token missing required claims', async () => {
+      const { kid, privateKey } = await kit.tokens.getActiveSigningKey();
+      const token = await new SignJWT({
+        client_id: 'merchant_portal_web',
+      })
+        .setProtectedHeader({ alg: 'RS256', kid })
+        .setIssuer(kit.config.issuer)
+        .setAudience(kit.config.apiAudience)
+        .setIssuedAt()
+        .setExpirationTime('5m')
+        .sign(privateKey);
+
+      const res = await request(apiApp)
+        .get('/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({
+        error: 'invalid_token',
+        error_description: 'Token validation failed',
+      });
+    });
   });
 
   describe('auth router OIDC metadata', () => {
@@ -76,6 +95,182 @@ describe('integration express', () => {
       const res = await request(authApp).get('/.well-known/jwks.json');
       expect(res.status).toBe(200);
       expect(res.body.keys.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('csrf and session cookie security', () => {
+    it('rejects logout when csrf header does not match cookie', async () => {
+      const user = await kit.users.createUser({ email: 'csrf@test.com', emailVerified: true });
+      const { sessionToken, csrfToken } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+
+      const signed = kit.sessions.signSessionCookie(sessionToken);
+      const res = await request(authApp)
+        .post('/logout')
+        .set('Cookie', [`${kit.config.cookie.name}=${signed}`, `uids_csrf=${csrfToken}`])
+        .set('X-CSRF-Token', 'mismatch-token')
+        .send({});
+
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({
+        error: 'csrf_failed',
+        error_description: 'CSRF validation failed',
+      });
+    });
+
+    it('does not authenticate tampered signed session cookies', async () => {
+      const user = await kit.users.createUser({ email: 'cookie@test.com', emailVerified: true });
+      const { sessionToken, csrfToken } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+
+      const signed = kit.sessions.signSessionCookie(sessionToken);
+      const tampered = `${signed}tampered`;
+      const res = await request(authApp)
+        .get('/session')
+        .set('Cookie', [`${kit.config.cookie.name}=${tampered}`, `uids_csrf=${csrfToken}`]);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ error: 'unauthorized' });
+    });
+
+    it('allows logout by refresh token without session cookie', async () => {
+      const user = await kit.users.createUser({ email: 'logout-refresh@test.com', emailVerified: true });
+      const { session } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+      const tokens = await kit.tokens.issueTokens({
+        user,
+        clientId: 'merchant_portal_web',
+        scopes: ['openid'],
+        sessionId: session.id,
+      });
+      const refreshToken = tokens.refresh_token;
+      expect(refreshToken).toBeDefined();
+      if (!refreshToken) {
+        throw new Error('Expected refresh token to be present');
+      }
+
+      const res = await request(authApp)
+        .post('/logout')
+        .send({ refresh_token: refreshToken });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true });
+
+      await expect(kit.tokens.refreshAccessToken(refreshToken)).rejects.toThrow(
+        /invalid|revoked|reuse/i,
+      );
+    });
+
+    it('allows logout by refresh token even when session cookies are sent without CSRF', async () => {
+      const user = await kit.users.createUser({
+        email: 'logout-refresh-cookies@test.com',
+        emailVerified: true,
+      });
+      const { session, sessionToken, csrfToken } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+      const tokens = await kit.tokens.issueTokens({
+        user,
+        clientId: 'merchant_portal_web',
+        scopes: ['openid'],
+        sessionId: session.id,
+      });
+      const refreshToken = tokens.refresh_token;
+      expect(refreshToken).toBeDefined();
+      if (!refreshToken) {
+        throw new Error('Expected refresh token to be present');
+      }
+
+      const signed = kit.sessions.signSessionCookie(sessionToken);
+
+      const res = await request(authApp)
+        .post('/logout')
+        .set('Cookie', [
+          `${kit.config.cookie.name}=${signed}`,
+          `uids_csrf=${csrfToken}`,
+        ])
+        .send({ refresh_token: refreshToken });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true });
+    });
+
+    it('allows logout by HttpOnly refresh cookie without CSRF (SPA cookie delivery)', async () => {
+      const user = await kit.users.createUser({
+        email: 'logout-refresh-cookie@test.com',
+        emailVerified: true,
+      });
+      const { session, sessionToken, csrfToken } = await kit.sessions.createSession({
+        userId: user.id,
+        clientId: 'merchant_portal_web',
+      });
+      const tokens = await kit.tokens.issueTokens({
+        user,
+        clientId: 'merchant_portal_web',
+        scopes: ['openid'],
+        sessionId: session.id,
+      });
+      const refreshToken = tokens.refresh_token;
+      expect(refreshToken).toBeDefined();
+      if (!refreshToken) {
+        throw new Error('Expected refresh token to be present');
+      }
+
+      const signed = kit.sessions.signSessionCookie(sessionToken);
+
+      const res = await request(authApp)
+        .post('/logout')
+        .set('Cookie', [
+          `${kit.config.cookie.name}=${signed}`,
+          `uids_csrf=${csrfToken}`,
+          `uids_refresh_token=${refreshToken}`,
+        ])
+        .send({});
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ success: true });
+    });
+  });
+
+  describe('device validation', () => {
+    it('returns all validation issues for invalid body', async () => {
+      const res = await request(authApp).post('/devices/register').send({
+        platform: 'playstation',
+      });
+
+      expect(res.status).toBe(422);
+      expect(res.body.error.details.length).toBeGreaterThanOrEqual(2);
+      const fields = res.body.error.details.map(
+        (d: { field: string }) => d.field,
+      );
+      expect(fields).toEqual(expect.arrayContaining(['client_id', 'device_id']));
+    });
+
+    it('rejects unsupported device platform', async () => {
+      const res = await request(authApp).post('/devices/register').send({
+        client_id: 'merchant_portal_web',
+        device_id: 'd-123',
+        platform: 'playstation',
+      });
+
+      expect(res.status).toBe(422);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Validation failed');
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.body.error.details).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            field: 'platform',
+            message: expect.any(String),
+          }),
+        ]),
+      );
     });
   });
 });

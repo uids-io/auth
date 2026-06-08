@@ -1,0 +1,69 @@
+info:
+  name: Exchange Authorization Code
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/token"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Uids-Device-Id
+      value: "{{deviceId}}"
+      disabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "grant_type": "authorization_code",
+        "code": "{{authorizationCode}}",
+        "client_id": "{{clientId}}",
+        "redirect_uri": "{{redirectUri}}",
+        "code_verifier": "{{codeVerifier}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        const getHeader = (res, name) => {
+          const lower = name.toLowerCase();
+          if (Array.isArray(res.headers)) {
+            const h = res.headers.find(
+              (x) => String(x.name || "").toLowerCase() === lower,
+            );
+            return h?.value;
+          }
+          return res.headers?.[name];
+        };
+
+        if (res.body?.access_token) {
+          bru.setEnvVar("accessToken", String(res.body.access_token));
+        }
+
+        if (res.body?.refresh_token) {
+          bru.setEnvVar("refreshToken", String(res.body.refresh_token));
+        }
+
+        const setCookie = getHeader(res, "set-cookie");
+        if (setCookie) {
+          const lines = Array.isArray(setCookie) ? setCookie : [setCookie];
+          for (const line of lines) {
+            const csrf = String(line).match(/uids_csrf=([^;]+)/);
+            if (csrf?.[1]) bru.setEnvVar("csrfToken", csrf[1]);
+          }
+        }
+
+        if (res.status >= 400) {
+          console.log("token exchange failed", res.body);
+        }
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+
+docs: Sets `accessToken`, `refreshToken`, and `csrfToken` (if Set-Cookie) on success.

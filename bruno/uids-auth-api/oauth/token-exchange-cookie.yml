@@ -1,0 +1,45 @@
+info:
+  name: Exchange Code (refresh in cookie)
+  type: http
+  seq: 3
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/token"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Uids-Token-Delivery
+      value: cookie
+    - name: X-Uids-Device-Id
+      value: "{{deviceId}}"
+      disabled: true
+  body:
+    type: json
+    data: |-
+      {
+        "grant_type": "authorization_code",
+        "code": "{{authorizationCode}}",
+        "client_id": "{{clientId}}",
+        "redirect_uri": "{{redirectUri}}",
+        "code_verifier": "{{codeVerifier}}"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.body?.access_token) {
+          bru.setEnvVar("accessToken", String(res.body.access_token));
+        }
+        bru.setEnvVar("refreshToken", "");
+        console.log(
+          "refresh token in HttpOnly cookie uids_refresh_token (not in JSON)",
+        );
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Sets `accessToken` only; refresh is in `uids_refresh_token` cookie. Use **Refresh tokens** without body refresh_token when cookie is set.

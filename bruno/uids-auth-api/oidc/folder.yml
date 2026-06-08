@@ -1,0 +1,7 @@
+info:
+  name: OIDC
+  type: folder
+  seq: 1
+
+docs: |-
+  OpenID Connect discovery, login providers list, JWKS, and hosted login page.

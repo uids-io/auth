@@ -1,0 +1,55 @@
+info:
+  name: Google Start
+  type: http
+  seq: 1
+  tags:
+    - browser
+
+http:
+  method: GET
+  url: "{{authBaseUrl}}/oauth/google/start"
+  params:
+    - name: state
+      value: "{{pendingState}}"
+      type: query
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        const pending = bru.getEnvVar("pendingState");
+        if (!pending || String(pending).length === 0) {
+          console.warn(
+            "pendingState is empty — run Authorize first or set pendingState manually",
+          );
+        }
+    - type: after-response
+      code: |-
+        const getHeader = (res, name) => {
+          const lower = name.toLowerCase();
+          if (Array.isArray(res.headers)) {
+            const h = res.headers.find(
+              (x) => String(x.name || "").toLowerCase() === lower,
+            );
+            return h?.value;
+          }
+          return res.headers?.[name];
+        };
+        const location = getHeader(res, "location");
+        if (location) {
+          bru.setEnvVar("lastProviderAuthUrl", location);
+          try {
+            const u = new URL(location);
+            const state = u.searchParams.get("state");
+            if (state) bru.setEnvVar("oauthState", state);
+          } catch (_) {}
+        }
+
+settings:
+  encodeUrl: true
+  followRedirects: false
+
+docs: |-
+  Use after **Authorize** sets `pendingState`. Passes it as OAuth `state` to Google.
+  Saves Google URL to `lastProviderAuthUrl` (open in browser).

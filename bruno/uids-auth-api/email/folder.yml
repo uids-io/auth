@@ -1,0 +1,7 @@
+info:
+  name: Email
+  type: folder
+  seq: 4
+
+docs: |-
+  Password and magic-link authentication on the auth server.

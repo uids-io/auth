@@ -1,0 +1,36 @@
+info:
+  name: Logout (session cookie + CSRF)
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{authBaseUrl}}/logout"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-CSRF-Token
+      value: "{{csrfToken}}"
+  body:
+    type: json
+    data: "{}"
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status >= 200 && res.status < 300) {
+          bru.setEnvVar("accessToken", "");
+          bru.setEnvVar("refreshToken", "");
+          bru.setEnvVar("authorizationCode", "");
+          bru.setEnvVar("csrfToken", "");
+          bru.setEnvVar("sessionCookie", "");
+          bru.setEnvVar("pendingState", "");
+        }
+
+settings:
+  encodeUrl: true
+
+docs: |-
+  Requires session + CSRF cookies in Bruno cookie jar. Clears auth env vars on success.
