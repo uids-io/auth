@@ -1,6 +1,6 @@
 {
   "name": "@advcomm/uids-io-auth",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Production-ready auth package with OAuth/OIDC, sessions, devices, and Express integration",
   "type": "module",
   "main": "./dist/index.js",
