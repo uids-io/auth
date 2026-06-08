@@ -1,4 +1,5 @@
 import type { AuthKit } from "../config.js";
+import { buildIssuerUrl, normalizeIssuer } from "../issuerUrl.js";
 
 export type AuthLoginProviderId = "google" | "microsoft" | "email";
 
@@ -32,7 +33,11 @@ function socialProviderInfo(
 	issuer: string,
 	idpConsole: AuthIdpConsole,
 ): AuthProviderInfo {
-	const canonicalRedirectUri = `${issuer}/oauth/${id}/callback`;
+	const canonicalRedirectUri = buildIssuerUrl(
+		issuer,
+		`/oauth/${id}/callback`,
+	).href;
+
 	return {
 		id,
 		enabled,
@@ -42,7 +47,8 @@ function socialProviderInfo(
 }
 
 export function getAuthProviders(kit: AuthKit): AuthProvidersResponse {
-	const issuer = kit.config.issuer.replace(/\/$/, "");
+	const issuer = normalizeIssuer(kit.config.issuer);
+  
 	return {
 		issuer,
 		providers: [

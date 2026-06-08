@@ -1,6 +1,7 @@
 import type { AuthKit } from "../config.js";
 import { generateOpaqueToken } from "../crypto/random.js";
 import { UnauthorizedError } from "../errors.js";
+import { buildIssuerUrl } from "../issuerUrl.js";
 import type { PendingAuthContext } from "../types.js";
 import { completePendingAuthorize } from "./authorize.js";
 import {
@@ -137,7 +138,9 @@ export async function handleSocialCallback(
 	});
 
 	return {
-		redirectUrl: customRedirect ?? `${kit.config.issuer}/session`,
+		redirectUrl:
+			customRedirect ??
+			buildIssuerUrl(kit.config.issuer, "/session").href,
 		userId: user.id,
 	};
 }

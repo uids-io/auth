@@ -1,6 +1,11 @@
 import express from 'express';
 import { Pool } from 'pg';
-import { createAuthKit, createAuthRouter, runAuthMigrations } from '../../src/index.js';
+import {
+  buildIssuerUrl,
+  createAuthKit,
+  createAuthRouter,
+  runAuthMigrations,
+} from '../../src/index.js';
 import { seedDefaultPortalClients } from './seedPortalClients.js';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -13,8 +18,10 @@ await seedDefaultPortalClients(pool, {
   adminRedirectUris: [process.env.ADMIN_REDIRECT_URI ?? 'http://localhost:5176/auth/callback'],
 });
 
+const issuer = process.env.ISSUER ?? 'http://localhost:3000';
+
 const authKit = await createAuthKit({
-  issuer: process.env.ISSUER ?? 'http://localhost:3000',
+  issuer,
   apiAudience: process.env.API_AUDIENCE ?? 'http://localhost:4000',
   pg: pool,
   cookie: {
@@ -28,7 +35,7 @@ const authKit = await createAuthKit({
       ? {
           clientId: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-          callbackUrl: `${process.env.ISSUER ?? 'http://localhost:3000'}/oauth/google/callback`,
+          callbackUrl: buildIssuerUrl(issuer, '/oauth/google/callback').href,
         }
       : undefined,
     microsoft: process.env.MICROSOFT_CLIENT_ID
@@ -36,7 +43,7 @@ const authKit = await createAuthKit({
           clientId: process.env.MICROSOFT_CLIENT_ID,
           clientSecret: process.env.MICROSOFT_CLIENT_SECRET!,
           tenant: process.env.MICROSOFT_TENANT ?? 'common',
-          callbackUrl: `${process.env.ISSUER ?? 'http://localhost:3000'}/oauth/microsoft/callback`,
+          callbackUrl: buildIssuerUrl(issuer, '/oauth/microsoft/callback').href,
         }
       : undefined,
   },

@@ -54,6 +54,21 @@ describe("auth providers", () => {
 		expect(isLoginProviderEnabled(kit, "microsoft")).toBe(false);
 	});
 
+	it("builds canonical callback URIs under path-prefixed issuer", () => {
+		const prefixedKit = {
+			config: {
+				issuer: "https://auth.example.com/api/auth",
+				providers: {},
+			},
+		} as Parameters<typeof getAuthProviders>[0];
+		const microsoft = getAuthProviders(prefixedKit).providers.find(
+			(p) => p.id === "microsoft",
+		);
+		expect(microsoft?.authorizedRedirectUris).toEqual([
+			"https://auth.example.com/api/auth/oauth/microsoft/callback",
+		]);
+	});
+
 	it("uses configured callbackUrl when provider is enabled", () => {
 		const customKit = {
 			...kit,

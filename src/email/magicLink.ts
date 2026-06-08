@@ -2,6 +2,7 @@ import type { AuthKit } from "../config.js";
 import { generateOpaqueToken } from "../crypto/random.js";
 import { hashToken } from "../crypto/tokens.js";
 import { InvalidRequestError } from "../errors.js";
+import { buildIssuerUrl } from "../issuerUrl.js";
 import { completePendingAuthorize } from "../oauth/authorize.js";
 import { sendMagicLinkEmail } from "./emailSender.js";
 
@@ -52,7 +53,7 @@ export async function startMagicLink(
 		],
 	);
 
-	const url = new URL("/email/magic/callback", kit.config.issuer);
+	const url = buildIssuerUrl(kit.config.issuer, "/email/magic/callback");
 	url.searchParams.set("token", token);
 	await sendMagicLinkEmail(kit, params.email, url.toString());
 }
@@ -162,7 +163,7 @@ export async function consumeMagicLink(
 		}
 
 		return {
-			redirectUrl: `${kit.config.issuer}/session`,
+			redirectUrl: buildIssuerUrl(kit.config.issuer, "/session").href,
 			sessionToken,
 			csrfToken,
 			userId: user.id,

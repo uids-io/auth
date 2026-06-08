@@ -1,4 +1,5 @@
 import type { Router } from "express";
+import { normalizeIssuer } from "../../issuerUrl.js";
 import { getOpenIdConfiguration } from "../../oidc/discovery.js";
 import { getJwks } from "../../oidc/jwks.js";
 import { getAuthProviders } from "../../oidc/providers.js";
@@ -30,7 +31,7 @@ export function registerOidcRoutes(
 	router.get("/login", validateQuery(loginQuerySchema), (req, res) => {
 		res.type("html").send(
 			renderLoginPage({
-				issuer: context.kit.config.issuer.replace(/\/$/, ""),
+				issuer: normalizeIssuer(context.kit.config.issuer),
 				state: req.query.state as string | undefined,
 				googleEnabled: !!context.kit.config.providers.google,
 				microsoftEnabled: !!context.kit.config.providers.microsoft,

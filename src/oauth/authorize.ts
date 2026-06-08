@@ -1,6 +1,7 @@
 import type { AuthKit } from "../config.js";
 import { generateOpaqueToken } from "../crypto/random.js";
 import { InvalidRequestError, UnauthorizedError } from "../errors.js";
+import { buildIssuerUrl } from "../issuerUrl.js";
 import {
 	type AuthLoginProviderId,
 	isLoginProviderEnabled,
@@ -103,7 +104,7 @@ export async function handleAuthorize(
 		return { type: "redirect_login", url };
 	}
 
-	const loginUrl = new URL("/login", kit.config.issuer);
+	const loginUrl = buildIssuerUrl(kit.config.issuer, "/login");
 	loginUrl.searchParams.set("state", state);
 
 	return { type: "redirect_login", url: loginUrl.toString() };
@@ -114,13 +115,12 @@ async function resolveLoginProviderUrl(
 	provider: AuthLoginProviderId,
 	state: string,
 ): Promise<string> {
-	const issuer = kit.config.issuer.replace(/\/$/, "");
-
 	if (provider === "google" || provider === "microsoft") {
 		return startSocialLogin(kit, provider, { pendingState: state });
 	}
 
-	const loginUrl = new URL("/login", issuer);
+	const loginUrl = buildIssuerUrl(kit.config.issuer, "/login");
+  
 	loginUrl.searchParams.set("state", state);
 	return loginUrl.toString();
 }

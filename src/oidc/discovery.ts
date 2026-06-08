@@ -1,12 +1,17 @@
 import type { AuthKit } from "../config.js";
+import { buildIssuerUrl, normalizeIssuer } from "../issuerUrl.js";
 
 export function getOpenIdConfiguration(kit: AuthKit): Record<string, unknown> {
-	const issuer = kit.config.issuer.replace(/\/$/, "");
+	const issuer = normalizeIssuer(kit.config.issuer);
 	return {
 		issuer,
-		authorization_endpoint: `${issuer}/authorize`,
-		token_endpoint: `${issuer}/token`,
-		jwks_uri: `${issuer}/.well-known/jwks.json`,
+		authorization_endpoint: buildIssuerUrl(
+			kit.config.issuer,
+			"/authorize",
+		).href,
+		token_endpoint: buildIssuerUrl(kit.config.issuer, "/token").href,
+		jwks_uri: buildIssuerUrl(kit.config.issuer, "/.well-known/jwks.json")
+			.href,
 		response_types_supported: ["code"],
 		subject_types_supported: ["public"],
 		id_token_signing_alg_values_supported: ["RS256"],

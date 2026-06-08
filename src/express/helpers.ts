@@ -1,3 +1,4 @@
+import { buildIssuerUrl } from "../issuerUrl.js";
 import type { PendingAuthContext } from "../types.js";
 
 export function renderLoginPage(params: {
@@ -14,18 +15,30 @@ export function renderLoginPage(params: {
 	const providers: string[] = [];
 
 	if (params.googleEnabled) {
+		const googleStart = buildIssuerUrl(
+			params.issuer,
+			"/oauth/google/start",
+		);
 		providers.push(
-			`<a class="btn" href="${params.issuer}/oauth/google/start${returnTo}">Continue with Google</a>`,
+			`<a class="btn" href="${googleStart.href}${returnTo}">Continue with Google</a>`,
 		);
 	}
 	if (params.microsoftEnabled) {
+		const microsoftStart = buildIssuerUrl(
+			params.issuer,
+			"/oauth/microsoft/start",
+		);
 		providers.push(
-			`<a class="btn" href="${params.issuer}/oauth/microsoft/start${returnTo}">Continue with Microsoft</a>`,
+			`<a class="btn" href="${microsoftStart.href}${returnTo}">Continue with Microsoft</a>`,
 		);
 	}
 	if (params.emailEnabled) {
+		const passwordLogin = buildIssuerUrl(
+			params.issuer,
+			"/email/password/login",
+		);
 		providers.push(`
-      <form method="POST" action="${params.issuer}/email/password/login">
+      <form method="POST" action="${passwordLogin.href}">
         <input type="hidden" name="pending_state" value="${params.state ?? ""}" />
         <label>Email <input type="email" name="email" required /></label>
         <label>Password <input type="password" name="password" required /></label>

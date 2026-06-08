@@ -18,6 +18,7 @@ export {
 	type ValidationDetail,
 	ValidationError,
 } from "./errors.js";
+export { buildIssuerUrl, normalizeIssuer } from "./issuerUrl.js";
 export { createAuthRouter } from "./express/createAuthRouter.js";
 export { type RequireAuthConfig, requireAuth } from "./express/requireAuth.js";
 export { mapGoogleProfile } from "./oauth/providers/google.js";
