@@ -5,7 +5,13 @@ import {
 	registerWithPassword,
 } from "../../email/passwordLogin.js";
 import { parseDeviceContext } from "../../types.js";
-import { getClientIp, getUserAgent, parseFormBody } from "../helpers.js";
+import {
+	getClientIp,
+	getUserAgent,
+	oauthCallbackFromRedirectUrl,
+	parseFormBody,
+	prefersJsonResponse,
+} from "../helpers.js";
 import { asyncRouteHandler } from "../middleware/asyncRouteHandler.js";
 import {
 	validateBody,
@@ -72,6 +78,17 @@ export function registerEmailRoutes(
 			context.setSessionCookie(res, result.sessionToken, result.csrfToken);
 
 			if (result.redirectUrl) {
+				// Browser fetch cannot read cross-origin redirect Location (opaque filter).
+				// Return JSON for API/SPA clients; keep HTTP redirect for HTML forms.
+				if (prefersJsonResponse(req)) {
+					const callback = oauthCallbackFromRedirectUrl(result.redirectUrl);
+
+					if (callback) {
+						res.json({ code: callback.code, state: callback.state });
+						return;
+					}
+				}
+
 				res.redirect(result.redirectUrl);
 				return;
 			}

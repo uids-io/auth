@@ -1,5 +1,37 @@
+import type { Request } from "express";
+
 import { buildIssuerUrl } from "../issuerUrl.js";
 import type { PendingAuthContext } from "../types.js";
+
+/** True when the client expects a JSON body (embedded SPA login), not an HTTP redirect. */
+export function prefersJsonResponse(req: Request): boolean {
+	const accept = req.headers.accept;
+
+	if (typeof accept === "string" && accept.includes("application/json")) {
+		return true;
+	}
+
+	return req.accepts(["json", "html"]) === "json";
+}
+
+/** Extracts OAuth authorization code from a portal callback redirect URL. */
+export function oauthCallbackFromRedirectUrl(redirectUrl: string): {
+	code: string;
+	state: string | null;
+} | null {
+	try {
+		const parsed = new URL(redirectUrl);
+		const code = parsed.searchParams.get("code");
+
+		if (!code) {
+			return null;
+		}
+
+		return { code, state: parsed.searchParams.get("state") };
+	} catch {
+		return null;
+	}
+}
 
 export function renderLoginPage(params: {
 	issuer: string;

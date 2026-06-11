@@ -34,6 +34,8 @@ export function createCorsMiddleware(kit: AuthKit) {
 					"Access-Control-Allow-Methods",
 					"GET, POST, PUT, PATCH, DELETE, OPTIONS",
 				);
+				// Embedded email/password login reads `Location` with `redirect: "manual"`.
+				res.setHeader("Access-Control-Expose-Headers", "Location");
 			}
 		}
 

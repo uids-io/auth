@@ -5,32 +5,90 @@
 
 function getHeader(res, name) {
 	const lower = name.toLowerCase();
-	if (Array.isArray(res.headers)) {
-		const h = res.headers.find(
-			(x) => String(x.name || x.key || "").toLowerCase() === lower,
-		);
-		return h?.value ?? h?.val;
+	if (typeof res?.getHeader === "function") {
+		const viaGetter = res.getHeader(lower) ?? res.getHeader(name);
+		if (viaGetter) return viaGetter;
 	}
-	return res.headers?.[name] ?? res.headers?.[lower];
+	if (Array.isArray(res?.headers)) {
+		const h = res.headers.find(
+			(x) => String(x?.name || x?.key || "").toLowerCase() === lower,
+		);
+		const value = h?.value ?? h?.val;
+		if (value !== undefined && value !== null) return value;
+	}
+	const headers = res?.headers;
+	if (headers && typeof headers === "object" && !Array.isArray(headers)) {
+		return headers[lower] ?? headers[name];
+	}
+	return undefined;
 }
 
-function applyRedirectUrl(url) {
-	if (!url || typeof url !== "string") return;
+function resolveRedirectLocation(res) {
+	return (
+		getHeader(res, "location") ??
+		(res?.status >= 300 &&
+		res?.status < 400 &&
+		typeof res?.url === "string"
+			? res.url
+			: undefined)
+	);
+}
+
+function parseQueryParam(redirectLocation, key) {
+	if (!redirectLocation) return null;
+	const match = String(redirectLocation).match(
+		new RegExp(`[?&]${key}=([^&#]*)`),
+	);
+	if (!match?.[1]) return null;
 	try {
-		const base = bru.getEnvVar("authBaseUrl") || "http://localhost:3000";
-		const u = new URL(url, base);
-		const code = u.searchParams.get("code");
-		const state = u.searchParams.get("state");
-		if (code) bru.setEnvVar("authorizationCode", code);
-		if (state) {
-			if (u.pathname.endsWith("/login")) {
-				bru.setEnvVar("pendingState", state);
-			} else {
-				bru.setEnvVar("oauthState", state);
-			}
+		return decodeURIComponent(match[1].replace(/\+/g, " "));
+	} catch {
+		return match[1];
+	}
+}
+
+/** Parses OAuth redirect Location (login or portal callback) into Bruno env vars. */
+function parseOAuthRedirectLocation(redirectLocation) {
+	if (!redirectLocation || typeof redirectLocation !== "string") return;
+
+	const authBase = bru.getEnvVar("authBaseUrl") || "http://localhost:3000";
+	const portalCallback = bru.getEnvVar("redirectUri") || authBase;
+
+	let pathname = "";
+	let code = null;
+	let state = null;
+
+	try {
+		const parsed = new URL(redirectLocation, authBase);
+		pathname = parsed.pathname || "";
+		code = parsed.searchParams.get("code");
+		state = parsed.searchParams.get("state");
+	} catch {
+		try {
+			const parsed = new URL(redirectLocation, portalCallback);
+			pathname = parsed.pathname || "";
+			code = parsed.searchParams.get("code");
+			state = parsed.searchParams.get("state");
+		} catch {
+			pathname =
+				redirectLocation.replace(/\?.*$/, "").replace(/^[^:]+:\/\/[^/]+/, "") ||
+				"";
+			code = parseQueryParam(redirectLocation, "code");
+			state = parseQueryParam(redirectLocation, "state");
 		}
-	} catch (_) {
-		/* ignore invalid URL */
+	}
+
+	if (!code) code = parseQueryParam(redirectLocation, "code");
+	if (!state) state = parseQueryParam(redirectLocation, "state");
+
+	if (code) bru.setEnvVar("authorizationCode", code);
+
+	if (state) {
+		if (/\/login\/?$/i.test(pathname)) {
+			bru.setEnvVar("pendingState", state);
+		} else {
+			bru.setEnvVar("oauthState", state);
+		}
 	}
 }
 
@@ -72,8 +130,8 @@ function ensurePkcePair() {
 }
 
 function applyRedirectFromResponse(res) {
-	const location = getHeader(res, "location");
-	if (location) applyRedirectUrl(location);
+	const redirectLocation = resolveRedirectLocation(res);
+	if (redirectLocation) parseOAuthRedirectLocation(redirectLocation);
 }
 
 function applyTokensFromResponse(res) {
