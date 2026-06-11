@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/uids-io/auth/compare/v1.0.1...v1.1.0) (2026-06-11)
+
+
+### Features
+
+* **email:** return OAuth code as JSON for SPA password login ([37ff803](https://github.com/uids-io/auth/commit/37ff803d3274fd1c5d3604cd7590686a5e69596d))
+
 ## [1.0.1](https://github.com/uids-io/auth/compare/v1.0.0...v1.0.1) (2026-06-08)
 
 
